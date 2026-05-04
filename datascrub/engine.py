@@ -111,14 +111,20 @@ def scrub(
 
     # Fix 17: derive the starting counter from the highest token number already
     # present in token_map so that a sparsely-populated map (e.g. after an entry
-    # was deleted) never reuses an existing token number.
-    _existing_nums = [
-        int(m.group(1))
-        for v in token_map.values()
-        for m in (re.search(r"-(\d+)\]$", v),)
-        if m
-    ]
-    _token_counter = itertools.count(max(_existing_nums, default=0) + 1)
+    # was deleted) never reuses an existing token number.  The scan is O(n) on
+    # the number of existing tokens; the common case of an empty map short-circuits
+    # immediately.
+    if token_map:
+        _existing_nums = [
+            int(m.group(1))
+            for v in token_map.values()
+            for m in (re.search(r"-(\d+)\]$", v),)
+            if m
+        ]
+        _start = max(_existing_nums, default=0) + 1
+    else:
+        _start = 1
+    _token_counter = itertools.count(_start)
 
     findings: list[Finding] = []
     out_parts: list[str] = []

@@ -943,9 +943,8 @@ class DataScrubApp(ctk.CTk):
                 except Exception:
                     result_val = []
                 if isinstance(result_val, Exception):
-                    exc = result_val
-                    self.after(0, lambda: test_result.configure(
-                        text=f"Error: {exc}", text_color="#e06060"))
+                    self.after(0, lambda e=result_val: test_result.configure(
+                        text=f"Error: {e}", text_color="#e06060"))
                     return
 
                 matches = result_val
