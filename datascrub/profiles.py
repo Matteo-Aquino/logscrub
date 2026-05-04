@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -21,22 +22,27 @@ _APP_NAME = "datascrub"
 # Fix 16: compute _PROFILES_DIR lazily so that a platform error at import time
 # does not prevent the module from loading.
 _PROFILES_DIR: Path | None = None
+_PROFILES_DIR_LOCK = threading.Lock()
 
 
 def _get_profiles_dir() -> Path:
     global _PROFILES_DIR
-    if _PROFILES_DIR is None:
-        _PROFILES_DIR = Path(platformdirs.user_config_dir(_APP_NAME)) / "profiles"
-    return _PROFILES_DIR
+    with _PROFILES_DIR_LOCK:
+        if _PROFILES_DIR is None:
+            _PROFILES_DIR = Path(platformdirs.user_config_dir(_APP_NAME)) / "profiles"
+        return _PROFILES_DIR
 
 
 # Fix 13: in-memory cache invalidated by save/delete operations.
+# Protected by _CACHE_LOCK for thread-safety.
 _profiles_cache: list[Profile] | None = None
+_CACHE_LOCK = threading.Lock()
 
 
 def _invalidate_cache() -> None:
     global _profiles_cache
-    _profiles_cache = None
+    with _CACHE_LOCK:
+        _profiles_cache = None
 
 
 # Built-in preset profiles
@@ -110,26 +116,27 @@ def _ensure_dir() -> Path:
 def list_profiles() -> list[Profile]:
     """Return profiles: built-ins first, then user-saved (user saves shadow builtins by name)."""
     global _profiles_cache
-    if _profiles_cache is not None:
-        return list(_profiles_cache)
+    with _CACHE_LOCK:
+        if _profiles_cache is not None:
+            return list(_profiles_cache)
 
-    builtin = {p["name"]: Profile.from_dict(p) for p in _BUILTIN_PROFILES}
-    profiles_dir = _ensure_dir()
-    user: dict[str, Profile] = {}
-    for path in sorted(profiles_dir.glob("*.json")):
-        try:
-            p = Profile.from_dict(json.loads(path.read_text(encoding="utf-8")))
-            user[p.name] = p
-        except Exception as exc:
-            # Fix 8: surface corrupt-profile errors so they are not silently lost.
-            print(
-                f"datascrub: warning — could not load profile {path.name!r}: {exc}",
-                file=sys.stderr,
-            )
-    # Merge: user profiles override built-ins with the same name
-    merged = {**builtin, **user}
-    _profiles_cache = list(merged.values())
-    return list(_profiles_cache)
+        builtin = {p["name"]: Profile.from_dict(p) for p in _BUILTIN_PROFILES}
+        profiles_dir = _ensure_dir()
+        user: dict[str, Profile] = {}
+        for path in sorted(profiles_dir.glob("*.json")):
+            try:
+                p = Profile.from_dict(json.loads(path.read_text(encoding="utf-8")))
+                user[p.name] = p
+            except Exception as exc:
+                # Fix 8: surface corrupt-profile errors so they are not silently lost.
+                print(
+                    f"datascrub: warning — could not load profile {path.name!r}: {exc}",
+                    file=sys.stderr,
+                )
+        # Merge: user profiles override built-ins with the same name
+        merged = {**builtin, **user}
+        _profiles_cache = list(merged.values())
+        return list(_profiles_cache)
 
 
 def save_profile(profile: Profile) -> Path:

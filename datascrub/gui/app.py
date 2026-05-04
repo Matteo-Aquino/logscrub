@@ -14,6 +14,7 @@ New in v2:
 
 from __future__ import annotations
 
+import queue
 import sys
 import re
 import threading
@@ -869,8 +870,7 @@ class DataScrubApp(ctk.CTk):
             test_result.configure(text="Testing\u2026", text_color="gray60")
 
             def _run():
-                import queue as _queue
-                q: _queue.Queue = _queue.Queue()
+                q: queue.Queue = queue.Queue()
 
                 def _match():
                     try:
@@ -892,7 +892,11 @@ class DataScrubApp(ctk.CTk):
                     ))
                     return
 
-                result_val = q.get_nowait() if not q.empty() else []
+                # Fix: use try-except instead of q.empty() to avoid race condition.
+                try:
+                    result_val = q.get_nowait()
+                except queue.Empty:
+                    result_val = []
                 if isinstance(result_val, Exception):
                     self.after(0, lambda: test_result.configure(
                         text=f"Error: {result_val}", text_color="#e06060"))
