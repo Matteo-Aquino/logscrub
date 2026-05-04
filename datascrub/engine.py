@@ -29,6 +29,7 @@ class Finding:
     masked: str
     start: int  # byte offset in the *original* text
     end: int
+    confidence: float = 1.0  # inherited from the Pattern that produced this
 
 
 @dataclass
@@ -59,6 +60,8 @@ def scrub(
     mask_char: str = "*",
     mask_style: str = "partial",
     disabled_patterns: frozenset[str] = frozenset(),
+    allowlist: frozenset[str] = frozenset(),
+    token_map: dict[str, str] | None = None,
 ) -> ScrubResult:
     """Scan *text*, mask all sensitive values, return a :class:`ScrubResult`.
 
@@ -80,13 +83,26 @@ def scrub(
         - ``"label"``    — replace with ``[PATTERN_NAME]``
         - ``"full"``     — replace entirely with *mask_char* repeated
         - ``"redacted"`` — replace with ``[REDACTED]``
+        - ``"token"``    — replace with a consistent ``[TOKEN-N]`` so the same
+                           value always maps to the same token within a scrub
+                           session; pass a shared *token_map* dict to make
+                           tokens consistent across multiple calls.
     disabled_patterns:
         Names of patterns to skip entirely (e.g. ``frozenset({"ssn", "phone"})``).
+    allowlist:
+        Literal string values to skip even if a pattern would match them.
+    token_map:
+        Dict mapping original value → token string.  Mutated in-place so the
+        same token is reused for repeated occurrences.  Pass the same dict
+        across multiple :func:`scrub` calls to maintain consistency.
     """
     patterns = list(get_patterns(categories)) + list(extra_patterns)
 
     if not patterns or not text:
         return ScrubResult(text=text)
+
+    if token_map is None:
+        token_map = {}
 
     findings: list[Finding] = []
     out_parts: list[str] = []
@@ -100,6 +116,10 @@ def scrub(
         if pattern.name in disabled_patterns:
             continue
 
+        original = text[start:end]
+        if original in allowlist:
+            continue
+
         out_parts.append(text[pos:start])
 
         if mask_style == "label":
@@ -108,6 +128,10 @@ def scrub(
             masked = mask_char * len(match.group(0))
         elif mask_style == "redacted":
             masked = "[REDACTED]"
+        elif mask_style == "token":
+            if original not in token_map:
+                token_map[original] = f"[{pattern.category.upper()}-{len(token_map) + 1:03d}]"
+            masked = token_map[original]
         else:  # "partial"
             masked = pattern.mask(match)
             if mask_char != "*":
@@ -119,10 +143,11 @@ def scrub(
             Finding(
                 pattern_name=pattern.name,
                 category=pattern.category,
-                original=text[start:end],
+                original=original,
                 masked=masked,
                 start=start,
                 end=end,
+                confidence=pattern.confidence,
             )
         )
         pos = end

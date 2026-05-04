@@ -25,6 +25,7 @@ class Pattern:
     category: str
     regex: re.Pattern[str]
     masker: Callable[[re.Match[str]], str]
+    confidence: float = 1.0  # 0.0–1.0; lower = more false positives expected
 
     def mask(self, match: re.Match[str]) -> str:
         return self.masker(match)
@@ -212,6 +213,7 @@ _PATTERNS_CREDENTIALS: list[Pattern] = [
             r"""(?:["\s:=']+)([a-zA-Z0-9\-_.+/]{20,})"""
         ),
         masker=_mask_generic_credential,
+        confidence=0.8,
     ),
 ]
 
@@ -245,6 +247,7 @@ _PATTERNS_NETWORK: list[Pattern] = [
             r"(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
         ),
         masker=_mask_ipv4,
+        confidence=0.7,
     ),
 ]
 

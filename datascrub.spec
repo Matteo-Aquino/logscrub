@@ -21,17 +21,16 @@ a = Analysis(
         "tkinter.ttk",
         "tkinter.filedialog",
         "tkinter.messagebox",
-        # pyyaml (used by config.py for custom patterns)
-        "yaml",
-        "_yaml",
         # datascrub modules
         "datascrub",
         "datascrub.engine",
         "datascrub.patterns",
         "datascrub.handlers",
-        "datascrub.config",
         "datascrub.gui",
         "datascrub.gui.app",
+        "datascrub.audit",
+        "datascrub.profiles",
+        "platformdirs",
     ],
     hookspath=[],
     hooksconfig={},
@@ -44,8 +43,6 @@ a = Analysis(
 )
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-
-import sys as _sys
 
 exe = EXE(
     pyz,

@@ -4,16 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datascrub"
-version = "0.1.0"
+version = "2.0.0"
 description = "Pre-scrub sensitive data before feeding text/JSON/CSV to AI"
 requires-python = ">=3.11"
 dependencies = [
-    "pyyaml>=6.0",
-    "textual>=8.0",
+    "customtkinter>=5.0",
+    "platformdirs>=4.0",
 ]
-
-[project.optional-dependencies]
-clipboard = ["pyperclip>=1.8"]
 
 [project.scripts]
 datascrub = "datascrub.__main__:main"
