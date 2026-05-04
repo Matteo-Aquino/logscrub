@@ -892,7 +892,7 @@ class DataScrubApp(ctk.CTk):
                     ))
                     return
 
-                # Fix: use try-except instead of q.empty() to avoid race condition.
+                # Fix 12: use try-except instead of q.empty() to avoid race condition.
                 try:
                     result_val = q.get_nowait()
                 except queue.Empty:
