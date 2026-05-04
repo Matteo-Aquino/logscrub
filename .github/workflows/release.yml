@@ -1,0 +1,69 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: datascrub
+            asset_name: datascrub-linux
+          - os: windows-latest
+            artifact: datascrub.exe
+            asset_name: datascrub-windows.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install customtkinter pyyaml pyinstaller
+
+      - name: Build binary
+        run: pyinstaller datascrub.spec --clean
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: datascrub-linux
+          path: artifacts/
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: datascrub-windows.exe
+          path: artifacts/
+
+      - name: Rename artifacts
+        run: |
+          mv artifacts/datascrub artifacts/datascrub-linux
+          mv artifacts/datascrub.exe artifacts/datascrub-windows.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/datascrub-linux
+            artifacts/datascrub-windows.exe
+          generate_release_notes: true
