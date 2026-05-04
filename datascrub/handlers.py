@@ -3,11 +3,19 @@ Format handlers for datascrub.
 
 Each handler accepts raw text, scrubs it, and returns a ScrubResult.
 
-- scrub_json  — walks the decoded JSON tree, scrubs every string value in
-                place, then re-serialises with the original indentation
+- scrub_json  — walks the decoded JSON tree, scrubs every string *value* in
+                place, then re-serialises with the original indentation.
+                Note: JSON object **keys** are intentionally left unchanged so
+                that the document structure remains navigable after masking.
+                Note: ``Finding.start`` / ``Finding.end`` offsets reported by
+                this handler are relative to each extracted string value, not
+                to the original document — consumers should treat them as
+                intra-value offsets.
 - scrub_csv   — processes each cell individually so structure is preserved;
                 handles quoted fields and embedded newlines via the stdlib
-                csv module
+                csv module.
+                Note: ``Finding.start`` / ``Finding.end`` are relative to each
+                cell value, not to the full CSV document.
 
 Plain text passes directly to :func:`datascrub.engine.scrub`.
 """
@@ -76,12 +84,19 @@ def scrub_json(
     return ScrubResult(text=scrubbed_text, findings=all_findings)
 
 
-def _detect_json_indent(text: str) -> int | None:
-    """Return the indentation width found in *text*, or None for compact."""
+def _detect_json_indent(text: str) -> int | str | None:
+    """Return the indentation found in *text*.
+
+    Returns a ``str`` (``"\\t"``) for tab-indented documents, an ``int`` for
+    space-indented documents, or ``None`` for compact (no indentation).
+    """
     for line in text.splitlines():
         stripped = line.lstrip()
         if stripped and stripped != line:
-            return len(line) - len(stripped)
+            leading = line[: len(line) - len(stripped)]
+            if "\t" in leading:
+                return "\t"
+            return len(leading)
     return None
 
 
