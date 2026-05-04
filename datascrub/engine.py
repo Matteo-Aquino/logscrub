@@ -109,9 +109,16 @@ def scrub(
     if token_map is None:
         token_map = {}
 
-    # Fix 17: use an explicit counter so token numbering is independent of
-    # token_map size (avoids index reuse if the map is ever pruned externally).
-    _token_counter = itertools.count(len(token_map) + 1)
+    # Fix 17: derive the starting counter from the highest token number already
+    # present in token_map so that a sparsely-populated map (e.g. after an entry
+    # was deleted) never reuses an existing token number.
+    _existing_nums = [
+        int(m.group(1))
+        for v in token_map.values()
+        for m in (re.search(r"-(\d+)\]$", v),)
+        if m
+    ]
+    _token_counter = itertools.count(max(_existing_nums, default=0) + 1)
 
     findings: list[Finding] = []
     out_parts: list[str] = []

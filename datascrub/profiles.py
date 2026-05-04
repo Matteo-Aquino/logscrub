@@ -118,7 +118,8 @@ def list_profiles() -> list[Profile]:
     global _profiles_cache
     with _CACHE_LOCK:
         if _profiles_cache is not None:
-            return list(_profiles_cache)
+            # Return fresh copies so callers cannot mutate cached state.
+            return [Profile.from_dict(p.to_dict()) for p in _profiles_cache]
 
         builtin = {p["name"]: Profile.from_dict(p) for p in _BUILTIN_PROFILES}
         profiles_dir = _ensure_dir()
@@ -136,17 +137,18 @@ def list_profiles() -> list[Profile]:
         # Merge: user profiles override built-ins with the same name
         merged = {**builtin, **user}
         _profiles_cache = list(merged.values())
-        return list(_profiles_cache)
+        # Return copies so callers cannot mutate cached state.
+        return [Profile.from_dict(p.to_dict()) for p in _profiles_cache]
 
 
 def save_profile(profile: Profile) -> Path:
     """Persist a profile to disk.  Returns the path written.
 
     Raises ``FileExistsError`` if a *different* profile already occupies the
-    same filename slot and the caller should confirm the overwrite.  Callers
-    that intentionally overwrite (e.g. updating an existing profile) can catch
-    this error or call :func:`_profile_path` to build the path first and
-    decide independently.
+    same filename slot (two distinct profile names that sanitise to the same
+    filename would silently overwrite each other).  To intentionally overwrite
+    an existing profile, delete it first with :func:`delete_profile` and then
+    call this function again.
     """
     profiles_dir = _ensure_dir()
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "_" for c in profile.name)

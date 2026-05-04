@@ -14,6 +14,7 @@ New in v2:
 
 from __future__ import annotations
 
+import multiprocessing
 import queue
 import sys
 import re
@@ -30,6 +31,21 @@ from ..handlers import scrub_json, scrub_csv
 from ..patterns import Pattern
 from ..audit import export_json as audit_json, export_csv as audit_csv, export_text
 from ..profiles import list_profiles, save_profile, get_profile, Profile
+
+
+def _regex_test_mp_worker(
+    pattern_str: str, sample: str, result_queue: "multiprocessing.Queue[object]"
+) -> None:
+    """Run ``re.findall`` in a subprocess so the caller can ``terminate()`` it on timeout.
+
+    Must be a module-level function so it is picklable by the ``spawn`` context.
+    """
+    import re as _re
+    try:
+        result_queue.put(_re.compile(pattern_str).findall(sample))
+    except Exception as exc:
+        result_queue.put(exc)
+
 
 # ── Theme ──────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
@@ -84,6 +100,7 @@ class DataScrubApp(ctk.CTk):
         self._file_format: str = "text"
         self._current_file: str = ""
         self._scrub_job: int | None = None
+        self._scrub_gen: int = 0  # incremented each time _scrub() is called
         self._allowlist: set[str] = set()
         self._token_map: dict[str, str] = {}
 
@@ -558,6 +575,11 @@ class DataScrubApp(ctk.CTk):
         # for large inputs.  All GUI mutations are dispatched back to the main
         # thread via self.after().
         self._scrub_job = None
+        # Increment the generation so any in-flight older scrub is ignored when
+        # it eventually calls _apply_scrub_result().
+        self._scrub_gen += 1
+        gen = self._scrub_gen
+
         text = self._input_box.get("1.0", "end-1c")
         disabled = frozenset(n for n, v in self._pattern_vars.items() if not v.get())
         mask_char = self._resolve_mask_char()
@@ -565,6 +587,11 @@ class DataScrubApp(ctk.CTk):
         if mask_style != "token":
             self._token_map = {}
         all_patterns = self._extra_patterns + self._custom_patterns
+        # Give this worker its own copy of token_map so concurrent scrubs do
+        # not race through the dict.  The updated copy is merged back into
+        # self._token_map by _apply_scrub_result() only for the winning
+        # (latest-generation) result.
+        token_map_copy = dict(self._token_map)
         kwargs = dict(
             categories=None,
             extra_patterns=all_patterns,
@@ -572,7 +599,7 @@ class DataScrubApp(ctk.CTk):
             mask_style=mask_style,
             disabled_patterns=disabled,
             allowlist=frozenset(self._allowlist),
-            token_map=self._token_map,
+            token_map=token_map_copy,
         )
         file_format = self._file_format
 
@@ -583,14 +610,26 @@ class DataScrubApp(ctk.CTk):
                 result = scrub_csv(text, **kwargs)
             else:
                 result = scrub(text, **kwargs)
-            self.after(0, lambda: self._apply_scrub_result(result, text, file_format))
+            self.after(0, lambda: self._apply_scrub_result(
+                result, text, file_format, gen, token_map_copy))
 
         threading.Thread(target=_worker, daemon=True).start()
 
     def _apply_scrub_result(
-        self, result: ScrubResult, text: str, file_format: str
+        self,
+        result: ScrubResult,
+        text: str,
+        file_format: str,
+        gen: int | None = None,
+        worker_token_map: dict[str, str] | None = None,
     ) -> None:
         """Apply a completed scrub result to the UI (must run on the main thread)."""
+        # Discard stale results from older scrubs that finished after a newer one.
+        if gen is not None and gen != self._scrub_gen:
+            return
+        # Adopt the worker's updated token_map so token continuity is preserved.
+        if worker_token_map is not None:
+            self._token_map = worker_token_map
         self._last_result = result
 
         # Output — with diff highlighting for plain text
@@ -847,7 +886,10 @@ class DataScrubApp(ctk.CTk):
                          padx=12, pady=(0, 6))
 
         # Fix 12: run regex test in a background thread with a timeout so that
-        # a pathological (ReDoS) pattern cannot freeze the UI.
+        # a pathological (ReDoS) pattern cannot freeze the UI.  The regex itself
+        # runs inside a subprocess (via _regex_test_mp_worker) so that
+        # Process.terminate() can actually stop it — a daemon thread cannot be
+        # killed from the outside.
         _REGEX_TEST_TIMEOUT_S = 2.0
         _test_serial = [0]  # mutable cell to detect stale results
 
@@ -859,7 +901,7 @@ class DataScrubApp(ctk.CTk):
                                       text_color="#d4a060")
                 return
             try:
-                compiled = re.compile(pattern_str)
+                re.compile(pattern_str)
             except re.error as e:
                 test_result.configure(text=f"Regex error: {e}",
                                       text_color="#e06060")
@@ -870,36 +912,40 @@ class DataScrubApp(ctk.CTk):
             test_result.configure(text="Testing\u2026", text_color="gray60")
 
             def _run():
-                q: queue.Queue = queue.Queue()
+                # Use a subprocess so terminate() actually stops the regex.
+                ctx = multiprocessing.get_context("spawn")
+                mp_q: multiprocessing.Queue = ctx.Queue()
+                p = ctx.Process(
+                    target=_regex_test_mp_worker,
+                    args=(pattern_str, sample, mp_q),
+                    daemon=True,
+                )
+                p.start()
+                p.join(timeout=_REGEX_TEST_TIMEOUT_S)
 
-                def _match():
-                    try:
-                        q.put(compiled.findall(sample))
-                    except Exception as exc:
-                        q.put(exc)
-
-                t = threading.Thread(target=_match, daemon=True)
-                t.start()
-                t.join(timeout=_REGEX_TEST_TIMEOUT_S)
-
-                if serial != _test_serial[0]:
-                    return  # superseded by a later test request
-
-                if t.is_alive():
+                if p.is_alive():
+                    # Timeout — kill the subprocess so it stops burning CPU.
+                    p.terminate()
+                    p.join()
+                    if serial != _test_serial[0]:
+                        return  # superseded by a later test request
                     self.after(0, lambda: test_result.configure(
                         text="Timed out — pattern may be too complex (ReDoS risk).",
                         text_color="#e06060",
                     ))
                     return
 
-                # Fix 12: use try-except instead of q.empty() to avoid race condition.
+                if serial != _test_serial[0]:
+                    return  # superseded by a later test request
+
                 try:
-                    result_val = q.get_nowait()
-                except queue.Empty:
+                    result_val = mp_q.get_nowait()
+                except Exception:
                     result_val = []
                 if isinstance(result_val, Exception):
+                    exc = result_val
                     self.after(0, lambda: test_result.configure(
-                        text=f"Error: {result_val}", text_color="#e06060"))
+                        text=f"Error: {exc}", text_color="#e06060"))
                     return
 
                 matches = result_val
