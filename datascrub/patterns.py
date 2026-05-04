@@ -98,11 +98,18 @@ def _mask_api_key(m: re.Match[str]) -> str:
 
 
 def _mask_jwt(m: re.Match[str]) -> str:
-    header, _payload, sig = m.group(0).split(".", 2)
+    parts = m.group(0).split(".", 2)
+    # Fix 10: guard against unexpected split results (should always be 3 parts
+    # given the regex, but be defensive).
+    if len(parts) < 3:
+        return m.group(0)
+    header, _payload, sig = parts
     return f"{header[:10]}*****.{sig[-8:]}"
 
 
 def _mask_bearer(m: re.Match[str]) -> str:
+    # Fix 11: groups 1 and 2 are guaranteed by the regex pattern — (Bearer\s+)
+    # and ([a-zA-Z0-9\-._~+/]+=*).  If the regex is ever changed, update here.
     bearer, token = m.group(1), m.group(2)
     masked = _mask_middle(token, keep_start=4, keep_end=4, char="*", min_mask=4)
     return f"{bearer}{masked}"
@@ -125,6 +132,14 @@ def _mask_credit_card(m: re.Match[str]) -> str:
         return raw  # spurious match — leave untouched
     sep = "-" if "-" in raw else (" " if " " in raw else "")
     first4, last4 = digits[:4], digits[-4:]
+    # Fix 7: Amex uses a 4-6-5 grouping for 15-digit cards (34xx / 37xx);
+    # the last 5-digit group is masked as '*{last4}' (mask only the leading
+    # digit of the group, preserving the last 4 for identification).
+    # All other supported networks use 4-4-4-4 groups.
+    if len(digits) == 15:
+        if sep:
+            return f"{first4}{sep}{'*' * 6}{sep}*{last4}"
+        return f"{first4}{'*' * 7}{last4}"
     if sep:
         return f"{first4}{sep}****{sep}****{sep}{last4}"
     return f"{first4}{'*' * (len(digits) - 8)}{last4}"
@@ -222,9 +237,14 @@ _PATTERNS_FINANCIAL: list[Pattern] = [
         name="credit_card",
         category="financial",
         regex=re.compile(
-            # Major network BIN prefixes: Visa 4, MC 51-55, Amex 34/37, Disc 6011/65
-            r"\b(?:4[0-9]{3}|5[1-5][0-9]{2}|3[47][0-9]{2}|6(?:011|5[0-9]{2}))"
-            r"(?:[-\s]?[0-9]{4}){3}\b"
+            # Fix 7: two alternations — Amex 4-6-5 (15 digits) first, then the
+            # standard 4-4-4-4 (16-digit) format for Visa, MC, and Discover.
+            # Amex BIN prefixes: 34xx, 37xx
+            r"\b(?:"
+            r"3[47][0-9]{2}[-\s]?[0-9]{6}[-\s]?[0-9]{5}"
+            r"|"
+            r"(?:4[0-9]{3}|5[1-5][0-9]{2}|6(?:011|5[0-9]{2}))(?:[-\s]?[0-9]{4}){3}"
+            r")\b"
         ),
         masker=_mask_credit_card,
     ),

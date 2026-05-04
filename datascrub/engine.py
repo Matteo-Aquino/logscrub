@@ -9,6 +9,7 @@ pattern order.
 
 from __future__ import annotations
 
+import itertools
 import re
 from dataclasses import dataclass, field
 from typing import Sequence
@@ -96,13 +97,21 @@ def scrub(
         same token is reused for repeated occurrences.  Pass the same dict
         across multiple :func:`scrub` calls to maintain consistency.
     """
-    patterns = list(get_patterns(categories)) + list(extra_patterns)
+    # Fix 2: filter disabled patterns before scanning so regexes never run for them.
+    patterns = [
+        p for p in list(get_patterns(categories)) + list(extra_patterns)
+        if p.name not in disabled_patterns
+    ]
 
     if not patterns or not text:
         return ScrubResult(text=text)
 
     if token_map is None:
         token_map = {}
+
+    # Fix 17: use an explicit counter so token numbering is independent of
+    # token_map size (avoids index reuse if the map is ever pruned externally).
+    _token_counter = itertools.count(len(token_map) + 1)
 
     findings: list[Finding] = []
     out_parts: list[str] = []
@@ -112,8 +121,6 @@ def scrub(
 
     for start, end, pattern, match in candidates:
         if start < pos:
-            continue
-        if pattern.name in disabled_patterns:
             continue
 
         original = text[start:end]
@@ -130,7 +137,7 @@ def scrub(
             masked = "[REDACTED]"
         elif mask_style == "token":
             if original not in token_map:
-                token_map[original] = f"[{pattern.category.upper()}-{len(token_map) + 1:03d}]"
+                token_map[original] = f"[{pattern.category.upper()}-{next(_token_counter):03d}]"
             masked = token_map[original]
         else:  # "partial"
             masked = pattern.mask(match)

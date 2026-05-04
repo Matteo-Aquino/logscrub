@@ -454,12 +454,14 @@ class DataScrubApp(ctk.CTk):
         for widget in self._preset_frame.winfo_children():
             try:
                 widget.configure(state=state)
-            except Exception:
+            except tk.TclError:
+                # Fix 9: only ignore Tcl errors (e.g. widget doesn't support
+                # the state option); let unexpected Python exceptions propagate.
                 pass
         for widget in self._custom_frame.winfo_children():
             try:
                 widget.configure(state=state)
-            except Exception:
+            except tk.TclError:
                 pass
         self._on_setting_change()
 
@@ -536,7 +538,9 @@ class DataScrubApp(ctk.CTk):
         if not path:
             return
         try:
-            content = Path(path).read_text(encoding="utf-8")
+            # Fix 1: use errors="replace" so non-UTF-8 files don't raise
+            # UnicodeDecodeError — replacement characters are visible in the UI.
+            content = Path(path).read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
             messagebox.showerror("datascrub", f"Cannot read file:\n{exc}")
             return
@@ -549,6 +553,9 @@ class DataScrubApp(ctk.CTk):
         self._update_status_format()
 
     def _scrub(self) -> None:
+        # Fix 5: run the scrub in a daemon thread so the UI stays responsive
+        # for large inputs.  All GUI mutations are dispatched back to the main
+        # thread via self.after().
         self._scrub_job = None
         text = self._input_box.get("1.0", "end-1c")
         disabled = frozenset(n for n, v in self._pattern_vars.items() if not v.get())
@@ -566,18 +573,29 @@ class DataScrubApp(ctk.CTk):
             allowlist=frozenset(self._allowlist),
             token_map=self._token_map,
         )
-        if self._file_format == "json":
-            result = scrub_json(text, **kwargs)
-        elif self._file_format == "csv":
-            result = scrub_csv(text, **kwargs)
-        else:
-            result = scrub(text, **kwargs)
+        file_format = self._file_format
+
+        def _worker():
+            if file_format == "json":
+                result = scrub_json(text, **kwargs)
+            elif file_format == "csv":
+                result = scrub_csv(text, **kwargs)
+            else:
+                result = scrub(text, **kwargs)
+            self.after(0, lambda: self._apply_scrub_result(result, text, file_format))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_scrub_result(
+        self, result: ScrubResult, text: str, file_format: str
+    ) -> None:
+        """Apply a completed scrub result to the UI (must run on the main thread)."""
         self._last_result = result
 
         # Output — with diff highlighting for plain text
         self._output_box.configure(state="normal")
         self._output_box.delete("1.0", "end")
-        if self._file_format == "text" and result.findings:
+        if file_format == "text" and result.findings:
             pos = 0
             for f in result.findings:
                 if f.start < pos:
@@ -827,6 +845,11 @@ class DataScrubApp(ctk.CTk):
         test_result.grid(row=1, column=0, columnspan=2, sticky="w",
                          padx=12, pady=(0, 6))
 
+        # Fix 12: run regex test in a background thread with a timeout so that
+        # a pathological (ReDoS) pattern cannot freeze the UI.
+        _REGEX_TEST_TIMEOUT_S = 2.0
+        _test_serial = [0]  # mutable cell to detect stale results
+
         def _test(_event=None):
             pattern_str = fields["Regex:"].get().strip()
             sample = test_entry.get()
@@ -840,18 +863,56 @@ class DataScrubApp(ctk.CTk):
                 test_result.configure(text=f"Regex error: {e}",
                                       text_color="#e06060")
                 return
-            matches = compiled.findall(sample)
-            if not matches:
-                test_result.configure(text="No match.", text_color="#d4a060")
-            else:
-                preview = ", ".join(
-                    repr(m if isinstance(m, str) else m[0])
-                    for m in matches[:5]
-                )
-                test_result.configure(
-                    text=f"{len(matches)} match(es): {preview}",
-                    text_color="#60e060",
-                )
+
+            _test_serial[0] += 1
+            serial = _test_serial[0]
+            test_result.configure(text="Testing\u2026", text_color="gray60")
+
+            def _run():
+                import queue as _queue
+                q: _queue.Queue = _queue.Queue()
+
+                def _match():
+                    try:
+                        q.put(compiled.findall(sample))
+                    except Exception as exc:
+                        q.put(exc)
+
+                t = threading.Thread(target=_match, daemon=True)
+                t.start()
+                t.join(timeout=_REGEX_TEST_TIMEOUT_S)
+
+                if serial != _test_serial[0]:
+                    return  # superseded by a later test request
+
+                if t.is_alive():
+                    self.after(0, lambda: test_result.configure(
+                        text="Timed out — pattern may be too complex (ReDoS risk).",
+                        text_color="#e06060",
+                    ))
+                    return
+
+                result_val = q.get_nowait() if not q.empty() else []
+                if isinstance(result_val, Exception):
+                    self.after(0, lambda: test_result.configure(
+                        text=f"Error: {result_val}", text_color="#e06060"))
+                    return
+
+                matches = result_val
+                if not matches:
+                    self.after(0, lambda: test_result.configure(
+                        text="No match.", text_color="#d4a060"))
+                else:
+                    preview = ", ".join(
+                        repr(m if isinstance(m, str) else m[0])
+                        for m in matches[:5]
+                    )
+                    self.after(0, lambda: test_result.configure(
+                        text=f"{len(matches)} match(es): {preview}",
+                        text_color="#60e060",
+                    ))
+
+            threading.Thread(target=_run, daemon=True).start()
 
         test_entry.bind("<KeyRelease>", _test)
         ctk.CTkButton(test_frame, text="Test", width=70,
@@ -955,7 +1016,12 @@ class DataScrubApp(ctk.CTk):
                 disabled_patterns=disabled,
                 allowlist=list(self._allowlist),
             )
-            save_profile(p)
+            try:
+                save_profile(p)
+            except FileExistsError as exc:
+                # Fix 3 (GUI): surface filename-collision error to the user.
+                status.configure(text=str(exc), text_color="#e06060")
+                return
             self._profile_names = [pr.name for pr in list_profiles()]
             self._profile_menu.configure(values=["(none)"] + self._profile_names)
             self._profile_var.set(name)
