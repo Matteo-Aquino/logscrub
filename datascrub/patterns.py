@@ -82,6 +82,11 @@ def _mask_phone(m: re.Match[str]) -> str:
     return f"***-***-{digits[-4:]}"
 
 
+def _mask_passport(m: re.Match[str]) -> str:
+    raw = m.group(0)
+    return f"{raw[0]}{'*' * (len(raw) - 1)}"
+
+
 # ── Credential maskers ─────────────────────────────────────────────────────────
 
 
@@ -145,6 +150,14 @@ def _mask_credit_card(m: re.Match[str]) -> str:
     return f"{first4}{'*' * (len(digits) - 8)}{last4}"
 
 
+# ── Financial maskers (continued) ────────────────────────────────────────────
+
+
+def _mask_iban(m: re.Match[str]) -> str:
+    raw = m.group(0)
+    return f"{raw[:4]}{'*' * max(0, len(raw) - 8)}{raw[-4:]}"
+
+
 # ── Network maskers ────────────────────────────────────────────────────────────
 
 
@@ -156,6 +169,13 @@ def _mask_ipv4(m: re.Match[str]) -> str:
 def _mask_url_credentials(m: re.Match[str]) -> str:
     # https://user:pass@host  →  https://user:****@host
     return f"{m.group(1)}{m.group(2)}:****@"
+
+
+def _mask_mac_address(m: re.Match[str]) -> str:
+    raw = m.group(0)
+    sep = ":" if ":" in raw else "-"
+    parts = re.split(r"[:\-]", raw)
+    return f"{parts[0]}{sep}{parts[1]}{sep}**{sep}**{sep}**{sep}**"
 
 
 # ── Pattern registry ───────────────────────────────────────────────────────────
@@ -180,6 +200,13 @@ _PATTERNS_PII: list[Pattern] = [
             r"(?<!\d)(?:\+?1[\s.\-]?)?(?:\(?\d{3}\)?[\s.\-])\d{3}[\s.\-]\d{4}(?!\d)"
         ),
         masker=_mask_phone,
+    ),
+    Pattern(
+        name="us_passport",
+        category="pii",
+        regex=re.compile(r"\b[A-Z][0-9]{8}\b"),
+        masker=_mask_passport,
+        confidence=0.6,
     ),
 ]
 
@@ -230,9 +257,47 @@ _PATTERNS_CREDENTIALS: list[Pattern] = [
         masker=_mask_generic_credential,
         confidence=0.8,
     ),
+    Pattern(
+        name="slack_token",
+        category="credentials",
+        regex=re.compile(r"\bxox[baprs]-[0-9A-Za-z\-]{24,}\b"),
+        masker=_mask_api_key,
+    ),
+    Pattern(
+        name="stripe_key",
+        category="credentials",
+        regex=re.compile(r"\b(?:sk|pk|rk)_(?:live|test)_[0-9a-zA-Z]{24,}\b"),
+        masker=_mask_api_key,
+    ),
+    Pattern(
+        name="google_api_key",
+        category="credentials",
+        regex=re.compile(r"\bAIzaSy[0-9A-Za-z\-_]{33}\b"),
+        masker=_mask_api_key,
+    ),
+    Pattern(
+        name="anthropic_key",
+        category="credentials",
+        regex=re.compile(r"\bsk-ant-[a-zA-Z0-9\-_]{20,}\b"),
+        masker=_mask_api_key,
+    ),
+    Pattern(
+        name="sendgrid_key",
+        category="credentials",
+        regex=re.compile(r"\bSG\.[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}\b"),
+        masker=_mask_api_key,
+        confidence=0.9,
+    ),
 ]
 
 _PATTERNS_FINANCIAL: list[Pattern] = [
+    Pattern(
+        name="iban",
+        category="financial",
+        regex=re.compile(r"\b[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}\b"),
+        masker=_mask_iban,
+        confidence=0.75,
+    ),
     Pattern(
         name="credit_card",
         category="financial",
@@ -268,6 +333,14 @@ _PATTERNS_NETWORK: list[Pattern] = [
         ),
         masker=_mask_ipv4,
         confidence=0.7,
+    ),
+    Pattern(
+        name="mac_address",
+        category="network",
+        regex=re.compile(
+            r"\b(?:[0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}\b"
+        ),
+        masker=_mask_mac_address,
     ),
 ]
 
