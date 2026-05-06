@@ -6,14 +6,43 @@ build-backend = "setuptools.build_meta"
 name = "datascrub"
 version = "2.0.0"
 description = "Pre-scrub sensitive data before feeding text/JSON/CSV to AI"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
+keywords = ["privacy", "security", "pii", "redaction", "masking", "scrubbing"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Utilities",
+]
 dependencies = [
-    "customtkinter>=5.0",
+    "PySide6>=6.5",
     "platformdirs>=4.0",
+    "pyyaml>=6.0",
 ]
 
+[project.optional-dependencies]
+headless = [
+    "platformdirs>=4.0",
+    "pyyaml>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/USERNAME/datascrub"
+Repository = "https://github.com/USERNAME/datascrub"
+"Bug Tracker" = "https://github.com/USERNAME/datascrub/issues"
+
 [project.scripts]
-datascrub = "datascrub.__main__:main"
+datascrub = "datascrub.cli:main"
+datascrub-gui = "datascrub.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install customtkinter platformdirs pyinstaller
+        run: pip install PySide6 platformdirs pyinstaller pyyaml
 
       - name: Build binary
         run: pyinstaller datascrub.spec --clean

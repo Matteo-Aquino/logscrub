@@ -43,6 +43,7 @@ def scrub_json(
     disabled_patterns: frozenset[str] = frozenset(),
     allowlist: frozenset[str] = frozenset(),
     token_map: dict[str, str] | None = None,
+    min_confidence: float = 0.0,
 ) -> ScrubResult:
     """Scrub all string values inside a JSON document, preserving structure.
 
@@ -54,7 +55,7 @@ def scrub_json(
         return scrub(text, categories=categories, extra_patterns=extra_patterns,
                      mask_char=mask_char, mask_style=mask_style,
                      disabled_patterns=disabled_patterns, allowlist=allowlist,
-                     token_map=token_map)
+                     token_map=token_map, min_confidence=min_confidence)
 
     indent = _detect_json_indent(text)
     all_findings: list[Finding] = []
@@ -66,7 +67,7 @@ def scrub_json(
             result = scrub(node, categories=categories, extra_patterns=extra_patterns,
                            mask_char=mask_char, mask_style=mask_style,
                            disabled_patterns=disabled_patterns, allowlist=allowlist,
-                           token_map=token_map)
+                           token_map=token_map, min_confidence=min_confidence)
             all_findings.extend(result.findings)
             return result.text
         if isinstance(node, dict):
@@ -112,6 +113,7 @@ def scrub_csv(
     disabled_patterns: frozenset[str] = frozenset(),
     allowlist: frozenset[str] = frozenset(),
     token_map: dict[str, str] | None = None,
+    min_confidence: float = 0.0,
 ) -> ScrubResult:
     """Scrub every cell in a CSV document, preserving rows and columns.
 
@@ -126,7 +128,7 @@ def scrub_csv(
         return scrub(text, categories=categories, extra_patterns=extra_patterns,
                      mask_char=mask_char, mask_style=mask_style,
                      disabled_patterns=disabled_patterns, allowlist=allowlist,
-                     token_map=token_map)
+                     token_map=token_map, min_confidence=min_confidence)
 
     reader = csv.reader(io.StringIO(text), dialect)
 
@@ -145,7 +147,7 @@ def scrub_csv(
             result = scrub(cell, categories=categories, extra_patterns=extra_patterns,
                            mask_char=mask_char, mask_style=mask_style,
                            disabled_patterns=disabled_patterns, allowlist=allowlist,
-                           token_map=token_map)
+                           token_map=token_map, min_confidence=min_confidence)
             all_findings.extend(result.findings)
             out_row.append(result.text)
         out_rows.append(out_row)

@@ -7,20 +7,19 @@ import sys as _sys
 
 block_cipher = None
 
-# CustomTkinter ships JSON theme files that must be bundled
-_ctk_datas = collect_data_files("customtkinter")
+# PySide6 ships Qt plugins and binaries that must be bundled
+_pyside6_datas = collect_data_files("PySide6")
 
 a = Analysis(
     ["datascrub_launch.py"],
     pathex=["."],
     binaries=[],
-    datas=_ctk_datas,
+    datas=_pyside6_datas,
     hiddenimports=[
-        "customtkinter",
-        "tkinter",
-        "tkinter.ttk",
-        "tkinter.filedialog",
-        "tkinter.messagebox",
+        "PySide6",
+        "PySide6.QtCore",
+        "PySide6.QtGui",
+        "PySide6.QtWidgets",
         # datascrub modules
         "datascrub",
         "datascrub.engine",
@@ -30,12 +29,14 @@ a = Analysis(
         "datascrub.gui.app",
         "datascrub.audit",
         "datascrub.profiles",
+        "datascrub.cli",
         "platformdirs",
+        "yaml",
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["textual"],
+    excludes=["customtkinter", "tkinter", "textual"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

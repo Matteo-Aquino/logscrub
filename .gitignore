@@ -7,3 +7,5 @@ build/
 *.spec.bak
 *.bak
 test_data/
+.pytest_cache/
+tests/

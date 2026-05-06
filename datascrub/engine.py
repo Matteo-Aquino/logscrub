@@ -63,6 +63,7 @@ def scrub(
     disabled_patterns: frozenset[str] = frozenset(),
     allowlist: frozenset[str] = frozenset(),
     token_map: dict[str, str] | None = None,
+    min_confidence: float = 0.0,
 ) -> ScrubResult:
     """Scan *text*, mask all sensitive values, return a :class:`ScrubResult`.
 
@@ -138,6 +139,8 @@ def scrub(
 
         original = text[start:end]
         if original in allowlist:
+            continue
+        if pattern.confidence < min_confidence:
             continue
 
         out_parts.append(text[pos:start])

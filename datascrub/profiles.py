@@ -3,7 +3,9 @@ Policy profiles for datascrub.
 
 A profile is a named snapshot of all scrub settings: which patterns are
 enabled, which masking style to use, the mask character, and the allowlist.
-Profiles are stored as JSON files in a platform-appropriate config directory.
+Profiles are stored as JSON or YAML files in a platform-appropriate config
+directory, and can also be loaded from arbitrary file paths for git-managed
+shared configurations.
 """
 
 from __future__ import annotations
@@ -13,8 +15,15 @@ import sys
 import threading
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import Any
 
 import platformdirs
+
+try:
+    import yaml as _yaml
+    _YAML_AVAILABLE = True
+except ImportError:
+    _YAML_AVAILABLE = False
 
 
 _APP_NAME = "datascrub"
@@ -113,6 +122,26 @@ def _ensure_dir() -> Path:
     return profiles_dir
 
 
+def _load_profile_file(path: Path) -> Profile:
+    """Load a profile from a .json, .yaml, or .yml file."""
+    text = path.read_text(encoding="utf-8")
+    if path.suffix.lower() in (".yaml", ".yml"):
+        if not _YAML_AVAILABLE:
+            raise ImportError("pyyaml is required to load YAML profiles: pip install pyyaml")
+        data: Any = _yaml.safe_load(text)
+    else:
+        data = json.loads(text)
+    return Profile.from_dict(data)
+
+
+def load_profile_from_path(path: str | Path) -> Profile:
+    """Load a profile from an arbitrary file path (for git-managed shared configs).
+
+    Supports ``.json``, ``.yaml``, and ``.yml`` formats.
+    """
+    return _load_profile_file(Path(path))
+
+
 def list_profiles() -> list[Profile]:
     """Return profiles: built-ins first, then user-saved (user saves shadow builtins by name)."""
     global _profiles_cache
@@ -124,12 +153,16 @@ def list_profiles() -> list[Profile]:
         builtin = {p["name"]: Profile.from_dict(p) for p in _BUILTIN_PROFILES}
         profiles_dir = _ensure_dir()
         user: dict[str, Profile] = {}
-        for path in sorted(profiles_dir.glob("*.json")):
+        globs = (
+            list(profiles_dir.glob("*.json"))
+            + list(profiles_dir.glob("*.yaml"))
+            + list(profiles_dir.glob("*.yml"))
+        )
+        for path in sorted(globs):
             try:
-                p = Profile.from_dict(json.loads(path.read_text(encoding="utf-8")))
+                p = _load_profile_file(path)
                 user[p.name] = p
             except Exception as exc:
-                # Fix 8: surface corrupt-profile errors so they are not silently lost.
                 print(
                     f"datascrub: warning — could not load profile {path.name!r}: {exc}",
                     file=sys.stderr,
@@ -141,24 +174,34 @@ def list_profiles() -> list[Profile]:
         return [Profile.from_dict(p.to_dict()) for p in _profiles_cache]
 
 
-def save_profile(profile: Profile) -> Path:
+def save_profile(profile: Profile, fmt: str = "json") -> Path:
     """Persist a profile to disk.  Returns the path written.
 
-    Raises ``FileExistsError`` if a *different* profile already occupies the
-    same filename slot (two distinct profile names that sanitise to the same
-    filename would silently overwrite each other).  To intentionally overwrite
-    an existing profile, delete it first with :func:`delete_profile` and then
-    call this function again.
+    Parameters
+    ----------
+    profile:
+        The profile to save.
+    fmt:
+        ``"json"`` (default) or ``"yaml"``.  YAML requires pyyaml installed.
+
+    Raises ``FileExistsError`` if a different profile already occupies the
+    same filename slot.
     """
+    if fmt == "yaml":
+        if not _YAML_AVAILABLE:
+            raise ImportError("pyyaml is required to save YAML profiles: pip install pyyaml")
+        ext = ".yaml"
+    else:
+        ext = ".json"
+
     profiles_dir = _ensure_dir()
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "_" for c in profile.name)
-    path = profiles_dir / f"{safe_name}.json"
+    path = profiles_dir / f"{safe_name}{ext}"
 
-    # Fix 3: detect name-collision — two distinct profile names that map to the
-    # same sanitised filename would silently overwrite each other.
+    # Fix 3: detect name-collision
     if path.exists():
         try:
-            existing = Profile.from_dict(json.loads(path.read_text(encoding="utf-8")))
+            existing = _load_profile_file(path)
         except Exception:
             existing = None
         if existing is not None and existing.name != profile.name:
@@ -168,7 +211,13 @@ def save_profile(profile: Profile) -> Path:
                 "Rename one of them to avoid the collision."
             )
 
-    path.write_text(json.dumps(profile.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+    if fmt == "yaml":
+        path.write_text(
+            _yaml.dump(profile.to_dict(), default_flow_style=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+    else:
+        path.write_text(json.dumps(profile.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
     _invalidate_cache()
     return path
 
@@ -177,12 +226,15 @@ def delete_profile(name: str) -> bool:
     """Delete a user-saved profile by name.  Returns True if deleted."""
     safe_name = "".join(c if c.isalnum() or c in "-_ " else "_" for c in name)
     profiles_dir = _get_profiles_dir()
-    path = profiles_dir / f"{safe_name}.json"
-    if path.exists():
-        path.unlink()
+    deleted = False
+    for ext in (".json", ".yaml", ".yml"):
+        path = profiles_dir / f"{safe_name}{ext}"
+        if path.exists():
+            path.unlink()
+            deleted = True
+    if deleted:
         _invalidate_cache()
-        return True
-    return False
+    return deleted
 
 
 def get_profile(name: str) -> Profile | None:

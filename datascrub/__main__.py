@@ -1,11 +1,6 @@
-import os
-os.environ.setdefault("PYTHONUTF8", "1")
+from datascrub.gui.app import main
 
-from datascrub.gui.app import DataScrubApp
-
-
-def main() -> None:
-    DataScrubApp().mainloop()
+__all__ = ["main"]
 
 
 if __name__ == "__main__":
