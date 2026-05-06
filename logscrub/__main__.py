@@ -1,4 +1,4 @@
-from datascrub.gui.app import main
+from logscrub.gui.app import main
 
 __all__ = ["main"]
 

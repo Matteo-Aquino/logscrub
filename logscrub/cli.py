@@ -1,13 +1,13 @@
 """
-datascrub command-line interface.
+logscrub command-line interface.
 
 Usage
 -----
-  datascrub scrub input.txt [-o output.txt] [--profile HIPAA] [--dry-run]
-  datascrub scrub input.json --format json --mask-style token --token-map map.json
-  datascrub batch src/ dst/ [--audit report.json] [--dry-run]
-  datascrub gui                        # launch the desktop GUI
-  datascrub profiles                   # list available profiles
+  logscrub scrub input.txt [-o output.txt] [--profile HIPAA] [--dry-run]
+  logscrub scrub input.json --format json --mask-style token --token-map map.json
+  logscrub batch src/ dst/ [--audit report.json] [--dry-run]
+  logscrub gui                        # launch the desktop GUI
+  logscrub profiles                   # list available profiles
 
 Exit codes: 0 = success, 1 = user error, 2 = I/O error.
 """
@@ -24,7 +24,7 @@ from typing import NoReturn
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _die(msg: str, code: int = 1) -> NoReturn:
-    print(f"datascrub: {msg}", file=sys.stderr)
+    print(f"logscrub: {msg}", file=sys.stderr)
     sys.exit(code)
 
 
@@ -85,7 +85,7 @@ def _save_token_map(token_map: dict, path: str) -> None:
     try:
         Path(path).write_text(json.dumps(token_map, indent=2, ensure_ascii=False), encoding="utf-8")
     except OSError as exc:
-        print(f"datascrub: warning — could not save token map: {exc}", file=sys.stderr)
+        print(f"logscrub: warning — could not save token map: {exc}", file=sys.stderr)
 
 
 # ── scrub subcommand ───────────────────────────────────────────────────────────
@@ -166,7 +166,7 @@ def cmd_batch(args: argparse.Namespace) -> None:
     exts = {".txt", ".json", ".csv", ".log", ".yaml", ".yml", ".xml", ".md", ".env"}
     paths = [p for p in src.rglob("*") if p.is_file() and p.suffix.lower() in exts]
     if not paths:
-        print("datascrub: no supported files found.", file=sys.stderr)
+        print("logscrub: no supported files found.", file=sys.stderr)
         return
 
     token_map = _load_token_map(args.token_map)
@@ -246,7 +246,7 @@ def _write_audit(path: str, results: list) -> None:
             audit_json(results, p)
         print(f"Audit log: {path}", file=sys.stderr)
     except Exception as exc:
-        print(f"datascrub: warning — audit write failed: {exc}", file=sys.stderr)
+        print(f"logscrub: warning — audit write failed: {exc}", file=sys.stderr)
 
 
 # ── GUI launcher ───────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ def cmd_gui(args: argparse.Namespace) -> None:
 
 def _make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="datascrub",
+        prog="logscrub",
         description="Detect and mask sensitive data in text, JSON, and CSV files.",
     )
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")

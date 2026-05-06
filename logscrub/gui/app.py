@@ -1,5 +1,5 @@
 """
-PySide6 GUI for datascrub — v2.0
+PySide6 GUI for LogScrub — v2.0
 
 Features:
 - Policy profile selector (GDPR, HIPAA, SOC2, Minimal, user-defined)
@@ -274,7 +274,7 @@ class _Bridge(QObject):
 # ── Main window ────────────────────────────────────────────────────────────────
 
 
-class DataScrubApp(QMainWindow):
+class LogScrubApp(QMainWindow):
     """Main application window."""
 
     def __init__(self, extra_patterns: Sequence[Pattern] = ()) -> None:
@@ -299,7 +299,7 @@ class DataScrubApp(QMainWindow):
         self._bridge.batch_progress.connect(self._on_batch_progress)
         self._bridge.batch_done.connect(self._on_batch_done)
 
-        self.setWindowTitle("Datascrub")
+        self.setWindowTitle("LogScrub")
         self.resize(1260, 820)
         self.setMinimumSize(960, 640)
         self.setAcceptDrops(True)
@@ -338,7 +338,7 @@ class DataScrubApp(QMainWindow):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
 
-        title = QLabel("Datascrub")
+        title = QLabel("LogScrub")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(
             "font-size: 18px; font-weight: bold; color: #d4d4d4;"
@@ -852,7 +852,7 @@ class DataScrubApp(QMainWindow):
         try:
             content = Path(path).read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
-            QMessageBox.critical(self, "Datascrub", f"Cannot read file:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Cannot read file:\n{exc}")
             return
         suffix = Path(path).suffix.lower()
         self._file_format = {".json": "json", ".csv": "csv"}.get(suffix, "text")
@@ -974,14 +974,14 @@ class DataScrubApp(QMainWindow):
 
     def _copy(self) -> None:
         if self._last_result is None:
-            QMessageBox.information(self, "Datascrub", "Nothing to copy yet.")
+            QMessageBox.information(self, "LogScrub", "Nothing to copy yet.")
             return
         QApplication.clipboard().setText(self._last_result.text)
         self._show_toast("Copied to clipboard")
 
     def _save(self) -> None:
         if self._last_result is None:
-            QMessageBox.information(self, "Datascrub", "Nothing to save yet.")
+            QMessageBox.information(self, "LogScrub", "Nothing to save yet.")
             return
         path, _ = QFileDialog.getSaveFileName(
             self, "Save masked output", "",
@@ -993,11 +993,11 @@ class DataScrubApp(QMainWindow):
             Path(path).write_text(self._last_result.text, encoding="utf-8")
             self._show_toast(f"Saved  {Path(path).name}")
         except OSError as exc:
-            QMessageBox.critical(self, "Datascrub", f"Cannot save:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Cannot save:\n{exc}")
 
     def _export_audit(self, fmt: str = "json") -> None:
         if self._last_result is None:
-            QMessageBox.information(self, "Datascrub", "Nothing to export yet.")
+            QMessageBox.information(self, "LogScrub", "Nothing to export yet.")
             return
         filt = "CSV (*.csv);;All (*.*)" if fmt == "csv" else "JSON (*.json);;All (*.*)"
         path, _ = QFileDialog.getSaveFileName(self, "Export audit log", "", filt)
@@ -1011,11 +1011,11 @@ class DataScrubApp(QMainWindow):
                 audit_json([(source, self._last_result)], path)
             self._show_toast(f"Audit log saved  {Path(path).name}")
         except OSError as exc:
-            QMessageBox.critical(self, "Datascrub", f"Cannot save:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Cannot save:\n{exc}")
 
     def _show_report(self) -> None:
         if self._last_result is None:
-            QMessageBox.information(self, "Datascrub", "Nothing to report yet.")
+            QMessageBox.information(self, "LogScrub", "Nothing to report yet.")
             return
         source = self._current_file or "input"
         report = export_text([(source, self._last_result)], include_original=False)
@@ -1039,7 +1039,7 @@ class DataScrubApp(QMainWindow):
         self._current_file = ""
         self._full_text = ""
         self._token_map = {}
-        self.setWindowTitle("Datascrub")
+        self.setWindowTitle("LogScrub")
         self._findings_label.setText("FINDINGS  \u2014  none")
         self._output_label.setText("OUTPUT  (masked)")
         self._status_chars.setText("0 chars")
@@ -1388,7 +1388,7 @@ class DataScrubApp(QMainWindow):
             p = load_profile_from_path(path)
             save_profile(p)
         except Exception as exc:
-            QMessageBox.critical(self, "Datascrub", f"Import failed:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Import failed:\n{exc}")
             return
         self._profile_combo.blockSignals(True)
         self._profile_combo.clear()
@@ -1403,12 +1403,12 @@ class DataScrubApp(QMainWindow):
         """Export the currently selected profile to a JSON or YAML file."""
         name = self._profile_combo.currentText()
         if not name or name == "(none)":
-            QMessageBox.information(self, "Datascrub", "Select a profile to export first.")
+            QMessageBox.information(self, "LogScrub", "Select a profile to export first.")
             return
         from .profiles import get_profile
         p = get_profile(name)
         if p is None:
-            QMessageBox.warning(self, "Datascrub", f"Profile not found: {name!r}")
+            QMessageBox.warning(self, "LogScrub", f"Profile not found: {name!r}")
             return
         path, _ = QFileDialog.getSaveFileName(
             self, "Export profile", f"{name}.json",
@@ -1424,7 +1424,7 @@ class DataScrubApp(QMainWindow):
                     else _json.dumps(p.to_dict(), indent=2, ensure_ascii=False))
             Path(path).write_text(text, encoding="utf-8")
         except Exception as exc:
-            QMessageBox.critical(self, "Datascrub", f"Export failed:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Export failed:\n{exc}")
             return
         self._show_toast(f"Profile exported: {Path(path).name}")
 
@@ -1463,12 +1463,12 @@ class DataScrubApp(QMainWindow):
         src = self._batch_src_edit.text().strip()
         dst = self._batch_dst_edit.text().strip()
         if not src or not dst:
-            QMessageBox.warning(self, "Datascrub", "Set source and output folders first.")
+            QMessageBox.warning(self, "LogScrub", "Set source and output folders first.")
             return
         src_path = Path(src)
         dst_path = Path(dst)
         if not src_path.is_dir():
-            QMessageBox.critical(self, "Datascrub", "Source folder not found.")
+            QMessageBox.critical(self, "LogScrub", "Source folder not found.")
             return
 
         self._batch_btn.setEnabled(False)
@@ -1545,7 +1545,7 @@ class DataScrubApp(QMainWindow):
 
     def _show_export_dialog(self) -> None:
         if self._last_result is None:
-            QMessageBox.information(self, "Datascrub", "Nothing to export yet.")
+            QMessageBox.information(self, "LogScrub", "Nothing to export yet.")
             return
         dlg = QDialog(self)
         dlg.setWindowTitle("Export / Report")
@@ -1603,9 +1603,9 @@ class DataScrubApp(QMainWindow):
                         self._show_toast("Token map loaded")
                         dlg.accept()
                     else:
-                        QMessageBox.warning(self, "Datascrub", "Token map must be a JSON object.")
+                        QMessageBox.warning(self, "LogScrub", "Token map must be a JSON object.")
                 except Exception as exc:
-                    QMessageBox.critical(self, "Datascrub", f"Load failed:\n{exc}")
+                    QMessageBox.critical(self, "LogScrub", f"Load failed:\n{exc}")
             def _save_tm() -> None:
                 path, _ = QFileDialog.getSaveFileName(
                     self, "Save token map", "token_map.json", "JSON (*.json)")
@@ -1617,7 +1617,7 @@ class DataScrubApp(QMainWindow):
                     self._show_toast("Token map saved")
                     dlg.accept()
                 except Exception as exc:
-                    QMessageBox.critical(self, "Datascrub", f"Save failed:\n{exc}")
+                    QMessageBox.critical(self, "LogScrub", f"Save failed:\n{exc}")
             btn_load_tm.clicked.connect(_load_tm)
             btn_save_tm.clicked.connect(_save_tm)
             tm_row_layout.addWidget(btn_load_tm)
@@ -1696,7 +1696,7 @@ class DataScrubApp(QMainWindow):
         try:
             content = path.read_text(encoding="utf-8", errors="replace")
         except OSError as exc:
-            QMessageBox.critical(self, "Datascrub", f"Cannot read file:\n{exc}")
+            QMessageBox.critical(self, "LogScrub", f"Cannot read file:\n{exc}")
             return
         suffix = path.suffix.lower()
         self._file_format = {".json": "json", ".csv": "csv"}.get(suffix, "text")
@@ -1709,7 +1709,7 @@ class DataScrubApp(QMainWindow):
     # ── Settings persistence ───────────────────────────────────────────────────
 
     def _load_settings(self) -> None:
-        s = QSettings("datascrub", "datascrub")
+        s = QSettings("logscrub", "logscrub")
         geom = s.value("geometry")
         if geom:
             self.restoreGeometry(geom)
@@ -1760,7 +1760,7 @@ class DataScrubApp(QMainWindow):
         self._on_style_change()
 
     def _save_settings(self) -> None:
-        s = QSettings("datascrub", "datascrub")
+        s = QSettings("logscrub", "logscrub")
         s.setValue("geometry", self.saveGeometry())
         s.setValue("mask_style", self._resolve_mask_style())
         s.setValue("mask_char", self._resolve_mask_char())

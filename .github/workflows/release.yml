@@ -17,11 +17,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            artifact: datascrub
-            asset_name: datascrub-linux
+            artifact: logscrub
+            asset_name: logscrub-linux
           - os: windows-latest
-            artifact: datascrub.exe
-            asset_name: datascrub-windows.exe
+            artifact: logscrub.exe
+            asset_name: logscrub-windows.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -36,7 +36,7 @@ jobs:
         run: pip install PySide6 platformdirs pyinstaller pyyaml
 
       - name: Build binary
-        run: pyinstaller datascrub.spec --clean
+        run: pyinstaller logscrub.spec --clean
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -52,24 +52,24 @@ jobs:
       - name: Download Linux binary
         uses: actions/download-artifact@v4
         with:
-          name: datascrub-linux
+          name: logscrub-linux
           path: artifacts/
 
       - name: Download Windows binary
         uses: actions/download-artifact@v4
         with:
-          name: datascrub-windows.exe
+          name: logscrub-windows.exe
           path: artifacts/
 
       - name: Rename artifacts
         run: |
-          mv artifacts/datascrub artifacts/datascrub-linux
-          mv artifacts/datascrub.exe artifacts/datascrub-windows.exe
+          mv artifacts/logscrub artifacts/logscrub-linux
+          mv artifacts/logscrub.exe artifacts/logscrub-windows.exe
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/datascrub-linux
-            artifacts/datascrub-windows.exe
+            artifacts/logscrub-linux
+            artifacts/logscrub-windows.exe
           generate_release_notes: true

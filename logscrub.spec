@@ -1,5 +1,5 @@
-# datascrub.spec — PyInstaller build spec
-# Build with: pyinstaller datascrub.spec --clean
+# logscrub.spec — PyInstaller build spec
+# Build with: pyinstaller logscrub.spec --clean
 
 from PyInstaller.building.build_main import Analysis, PYZ, EXE, COLLECT
 from PyInstaller.utils.hooks import collect_data_files
@@ -11,7 +11,7 @@ block_cipher = None
 _pyside6_datas = collect_data_files("PySide6")
 
 a = Analysis(
-    ["datascrub_launch.py"],
+    ["logscrub_launch.py"],
     pathex=["."],
     binaries=[],
     datas=_pyside6_datas,
@@ -20,16 +20,16 @@ a = Analysis(
         "PySide6.QtCore",
         "PySide6.QtGui",
         "PySide6.QtWidgets",
-        # datascrub modules
-        "datascrub",
-        "datascrub.engine",
-        "datascrub.patterns",
-        "datascrub.handlers",
-        "datascrub.gui",
-        "datascrub.gui.app",
-        "datascrub.audit",
-        "datascrub.profiles",
-        "datascrub.cli",
+        # logscrub modules
+        "logscrub",
+        "logscrub.engine",
+        "logscrub.patterns",
+        "logscrub.handlers",
+        "logscrub.gui",
+        "logscrub.gui.app",
+        "logscrub.audit",
+        "logscrub.profiles",
+        "logscrub.cli",
         "platformdirs",
         "yaml",
     ],
@@ -52,7 +52,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="datascrub",
+    name="logscrub",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

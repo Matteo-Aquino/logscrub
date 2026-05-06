@@ -3,7 +3,7 @@ requires = ["setuptools>=70"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "datascrub"
+name = "logscrub"
 version = "2.0.0"
 description = "Pre-scrub sensitive data before feeding text/JSON/CSV to AI"
 readme = "README.md"
@@ -36,14 +36,14 @@ headless = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/USERNAME/datascrub"
-Repository = "https://github.com/USERNAME/datascrub"
-"Bug Tracker" = "https://github.com/USERNAME/datascrub/issues"
+Homepage = "https://github.com/Matteo-Aquino/datascrub"
+Repository = "https://github.com/Matteo-Aquino/datascrub"
+"Bug Tracker" = "https://github.com/Matteo-Aquino/datascrub/issues"
 
 [project.scripts]
-datascrub = "datascrub.cli:main"
-datascrub-gui = "datascrub.__main__:main"
+logscrub = "logscrub.cli:main"
+logscrub-gui = "logscrub.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["datascrub*"]
+include = ["logscrub*"]

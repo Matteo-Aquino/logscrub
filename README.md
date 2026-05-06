@@ -1,4 +1,4 @@
-# Datascrub
+# LogScrub
 
 Pre-scrub sensitive data from text, JSON, and CSV files before feeding them to AI tools, logging systems, or sharing with third parties.
 
@@ -31,20 +31,20 @@ Pre-scrub sensitive data from text, JSON, and CSV files before feeding them to A
 ### pip
 
 ```bash
-pip install datascrub
+pip install logscrub
 ```
 
-> Requires Python 3.11+. Installs both the `datascrub` CLI and `datascrub-gui` launcher.
+> Requires Python 3.11+. Installs both the `logscrub` CLI and `logscrub-gui` launcher.
 
 ### Headless (CLI only — no PySide6)
 
 ```bash
-pip install "datascrub[headless]"
+pip install "logscrub[headless]"
 ```
 
 ### Standalone binary
 
-Download the latest release binary from the [Releases](https://github.com/USERNAME/datascrub/releases) page. No Python required.
+Download the latest release binary from the [Releases](https://github.com/USERNAME/logscrub/releases) page. No Python required.
 
 ---
 
@@ -53,9 +53,9 @@ Download the latest release binary from the [Releases](https://github.com/USERNA
 ### GUI
 
 ```bash
-datascrub-gui
+logscrub-gui
 # or
-datascrub gui
+logscrub gui
 ```
 
 Drag and drop a file onto the input area, or open one with **Ctrl+O**. Masked output appears in real time.
@@ -63,25 +63,25 @@ Drag and drop a file onto the input area, or open one with **Ctrl+O**. Masked ou
 ### CLI — scrub stdin
 
 ```bash
-echo "My email is alice@example.com" | datascrub scrub -
+echo "My email is alice@example.com" | logscrub scrub -
 ```
 
 ### CLI — scrub a file
 
 ```bash
-datascrub scrub secrets.txt -o scrubbed.txt
+logscrub scrub secrets.txt -o scrubbed.txt
 ```
 
 ### CLI — dry run (preview findings, write nothing)
 
 ```bash
-datascrub scrub config.json --dry-run
+logscrub scrub config.json --dry-run
 ```
 
 ### CLI — batch scrub a directory
 
 ```bash
-datascrub batch ./logs ./logs-scrubbed --audit audit.json
+logscrub batch ./logs ./logs-scrubbed --audit audit.json
 ```
 
 ---
@@ -89,7 +89,7 @@ datascrub batch ./logs ./logs-scrubbed --audit audit.json
 ## CLI reference
 
 ```
-datascrub scrub [INPUT] [OPTIONS]
+logscrub scrub [INPUT] [OPTIONS]
   INPUT                 File path or '-' for stdin (default: stdin)
   -o, --output PATH     Output file or '-' for stdout
   --format              auto|text|json|csv  (default: auto)
@@ -104,11 +104,11 @@ datascrub scrub [INPUT] [OPTIONS]
   --dry-run             Show findings without writing output
   -q, --quiet           Suppress stderr progress messages
 
-datascrub batch SRC DST [OPTIONS]
+logscrub batch SRC DST [OPTIONS]
   (same flags as scrub, plus --audit)
 
-datascrub profiles       List available profiles
-datascrub gui            Launch desktop GUI
+logscrub profiles       List available profiles
+logscrub gui            Launch desktop GUI
 ```
 
 ---
@@ -158,8 +158,8 @@ Patterns that tend to produce false positives carry a confidence score below 1.0
 ## Development
 
 ```bash
-git clone https://github.com/USERNAME/datascrub
-cd datascrub
+git clone https://github.com/USERNAME/logscrub
+cd logscrub
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[headless]" pyside6 pyyaml pytest
 python -m pytest
@@ -169,8 +169,8 @@ python -m pytest
 
 ```bash
 pip install pyinstaller
-pyinstaller datascrub.spec --clean
-./dist/datascrub
+pyinstaller logscrub.spec --clean
+./dist/logscrub
 ```
 
 ---
