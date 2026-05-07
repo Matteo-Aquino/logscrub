@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "2.0.0",
+  "info": {
+    "title": "LogScrub \u2014 PII & Secret Sanitizer",
+    "id": {
+      "group": null,
+      "name": "TA-logscrub",
+      "version": "1.0.0"
+    },
+    "author": [
+      {
+        "name": "Matteo Aquino",
+        "email": null,
+        "company": null
+      }
+    ],
+    "releaseDate": null,
+    "description": "Scrub PII and secrets from Splunk search results in-pipeline using the | sanitize command. Supports GDPR, HIPAA, PCI-DSS, SOC 2 compliance standards and fully custom YAML configurations.",
+    "classification": {
+      "intendedAudience": null,
+      "categories": ["Security, Fraud & Compliance"],
+      "developmentStatus": "beta"
+    },
+    "commonInformationModels": null,
+    "license": {
+      "name": "MIT",
+      "text": "LICENSE",
+      "uri": null
+    },
+    "privacyPolicy": {
+      "name": null,
+      "text": null,
+      "uri": null
+    },
+    "releaseNotes": {
+      "name": null,
+      "text": null,
+      "uri": null
+    }
+  },
+  "dependencies": null,
+  "tasks": [],
+  "inputGroups": {},
+  "incompatibleApps": [],
+  "platformRequirements": {
+    "splunk": {
+      "Enterprise": ">=8.2",
+      "Cloud": ">=8.2"
+    }
+  },
+  "supportedDeployments": ["_standalone", "_distributed"],
+  "targetWorkloads": ["_search_heads"]
+}
