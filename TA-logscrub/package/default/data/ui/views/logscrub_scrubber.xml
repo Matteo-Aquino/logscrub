@@ -1,0 +1,102 @@
+<form version="1.1" theme="dark">
+  <label>LogScrub — Interactive Scrubber</label>
+  <description>Paste any text below, choose your options, and click Scrub to see the sanitized output and findings.</description>
+
+  <fieldset submitButton="true" autoRun="false">
+
+    <input type="text" token="tok_input" searchWhenChanged="false">
+      <label>Text to Scrub</label>
+      <prefix></prefix>
+      <suffix></suffix>
+      <default>Paste your log line, JSON payload, or any text here. Example: user john.doe@example.com logged in from 192.168.1.55 using card 4111-1111-1111-1111</default>
+      <initialValue>Paste your log line, JSON payload, or any text here. Example: user john.doe@example.com logged in from 192.168.1.55 using card 4111-1111-1111-1111</initialValue>
+    </input>
+
+    <input type="dropdown" token="tok_standard" searchWhenChanged="false">
+      <label>Compliance Standard</label>
+      <default>gdpr</default>
+      <initialValue>gdpr</initialValue>
+      <choice value="gdpr">GDPR — EU personal data</choice>
+      <choice value="hipaa">HIPAA — US healthcare</choice>
+      <choice value="pci">PCI-DSS — Payment cards</choice>
+      <choice value="soc2">SOC 2 — Secrets &amp; credentials</choice>
+      <choice value="all">All — Every pattern</choice>
+      <choice value="none">None — Passthrough (no scrubbing)</choice>
+    </input>
+
+    <input type="dropdown" token="tok_mask_style" searchWhenChanged="false">
+      <label>Mask Style</label>
+      <default>partial</default>
+      <initialValue>partial</initialValue>
+      <choice value="partial">partial — keep first/last chars  (jo**@e******.com)</choice>
+      <choice value="full">full — replace entirely  (***)</choice>
+      <choice value="label">label — pattern name  ([EMAIL])</choice>
+      <choice value="redacted">redacted — fixed string  ([REDACTED])</choice>
+    </input>
+
+  </fieldset>
+
+  <!-- ── Scrubbed Output ───────────────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Scrubbed Output</title>
+      <table>
+        <search>
+          <query>| makeresults
+| eval _raw="$tok_input$"
+| sanitize standard="$tok_standard$" mask_style="$tok_mask_style$" report_findings=true
+| table _raw, _raw_findings, _raw_finding_count
+| rename _raw AS "Scrubbed Text", _raw_findings AS "Findings", _raw_finding_count AS "Finding Count"</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">false</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ── Finding Detail ───────────────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Finding Detail</title>
+      <table>
+        <search>
+          <query>| makeresults
+| eval _raw="$tok_input$"
+| sanitize standard="$tok_standard$" mask_style="$tok_mask_style$" report_findings=true
+| eval findings_list=split(_raw_findings, ",")
+| mvexpand findings_list
+| eval findings_list=trim(findings_list)
+| where isnotnull(findings_list) AND findings_list!=""
+| stats count AS occurrences BY findings_list
+| rename findings_list AS "Pattern Matched", occurrences AS "Count"
+| sort - Count</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="wrap">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+
+    <panel>
+      <title>Original (Unscrubbed)</title>
+      <table>
+        <search>
+          <query>| makeresults
+| eval _raw="$tok_input$"
+| table _raw
+| rename _raw AS "Original Text"</query>
+          <earliest>-1m</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+</form>

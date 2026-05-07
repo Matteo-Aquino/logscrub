@@ -1,4 +1,5 @@
 <nav color="#2C3E50">
-  <view name="logscrub_overview" default="true" label="Overview" />
+  <view name="logscrub_scrubber" default="true" label="Scrubber" />
+  <view name="logscrub_overview" label="Overview" />
   <view name="search" label="Search" />
 </nav>
