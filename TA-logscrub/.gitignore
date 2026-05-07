@@ -1,3 +1,12 @@
 # ucc-gen output — generated, do not commit
 output/
 *.tar.gz
+
+# Runtime deps installed by build.sh into package/lib/
+# Only logscrub/ is committed; splunklib + yaml are installed at build time
+package/lib/splunklib/
+package/lib/splunk/
+package/lib/yaml/
+package/lib/PyYAML*/
+package/lib/*.dist-info/
+package/lib/*.egg-info/
