@@ -1,0 +1,245 @@
+<%page expression_filter="h"/>
+<%
+import json
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogScrub — Scrubber</title>
+  <link rel="stylesheet" href="/static/css/bootstrap-enterprise.css">
+  <style>
+    body { background: #1a1a2e; color: #e0e0e0; font-family: "Splunk Platform Sans", Arial, sans-serif; }
+    .scrubber-wrap { max-width: 960px; margin: 32px auto; padding: 0 16px; }
+    h1 { font-size: 1.6rem; font-weight: 600; margin-bottom: 4px; color: #fff; }
+    .subtitle { color: #aaa; font-size: 0.9rem; margin-bottom: 28px; }
+
+    .card { background: #16213e; border: 1px solid #2a2a4a; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card h2 { font-size: 1rem; font-weight: 600; margin: 0 0 14px; color: #c8d0e0; text-transform: uppercase; letter-spacing: .05em; }
+
+    label { display: block; font-size: 0.82rem; color: #aab; margin-bottom: 4px; }
+    textarea, select {
+      width: 100%; background: #0f0f23; color: #e0e0e0;
+      border: 1px solid #3a3a5c; border-radius: 4px; padding: 10px;
+      font-size: 0.9rem; font-family: "Splunk Platform Mono", monospace;
+      resize: vertical; box-sizing: border-box;
+    }
+    textarea:focus, select:focus { outline: none; border-color: #6c8ebf; }
+    select { height: 36px; resize: none; }
+
+    .controls { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+    .control-group { flex: 1; min-width: 180px; }
+
+    .btn-scrub {
+      background: #3b82f6; color: #fff; border: none; border-radius: 4px;
+      padding: 10px 28px; font-size: 0.95rem; cursor: pointer; font-weight: 600;
+      white-space: nowrap; align-self: flex-end;
+    }
+    .btn-scrub:hover { background: #2563eb; }
+    .btn-scrub:disabled { background: #374151; cursor: not-allowed; }
+    .btn-clear { background: transparent; color: #888; border: 1px solid #3a3a5c; border-radius: 4px; padding: 10px 18px; cursor: pointer; }
+    .btn-clear:hover { border-color: #6c8ebf; color: #ccc; }
+
+    #output-text {
+      background: #0f0f23; color: #7ee8a2; border: 1px solid #3a3a5c;
+      border-radius: 4px; padding: 12px; min-height: 120px;
+      font-family: "Splunk Platform Mono", monospace; font-size: 0.88rem;
+      white-space: pre-wrap; word-break: break-all;
+    }
+    #output-text.placeholder { color: #555; }
+
+    .badge-count {
+      display: inline-block; background: #1e3a5f; color: #7ec8ff;
+      border-radius: 12px; padding: 2px 10px; font-size: 0.78rem; font-weight: 600;
+      margin-left: 8px;
+    }
+    .badge-zero { background: #1e3a1e; color: #7ee8a2; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { text-align: left; color: #7ec8ff; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid #2a2a4a; }
+    td { padding: 7px 10px; border-bottom: 1px solid #1e1e36; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .cat-badge {
+      display: inline-block; font-size: 0.72rem; padding: 1px 7px;
+      border-radius: 3px; font-weight: 600; text-transform: uppercase;
+    }
+    .cat-pii         { background:#2d1b4e; color:#c084fc; }
+    .cat-credentials { background:#1e2f1e; color:#86efac; }
+    .cat-financial   { background:#2d2210; color:#fbbf24; }
+    .cat-network     { background:#0f2030; color:#67e8f9; }
+
+    .spinner { display: none; width: 16px; height: 16px; border: 2px solid #3b82f6; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-left: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error-box { display: none; background: #3b1111; border: 1px solid #7f1d1d; border-radius: 4px; padding: 10px 14px; color: #fca5a5; margin-top: 10px; }
+    .copy-btn { float: right; background: transparent; border: 1px solid #3a3a5c; color: #aaa; border-radius: 4px; padding: 2px 10px; font-size: 0.75rem; cursor: pointer; }
+    .copy-btn:hover { border-color: #6c8ebf; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="scrubber-wrap">
+  <h1>&#x1F6E1; LogScrub — Interactive Scrubber</h1>
+  <p class="subtitle">Paste any text, choose a compliance standard and mask style, then click Scrub.</p>
+
+  <!-- Input card -->
+  <div class="card">
+    <h2>Input</h2>
+    <label for="input-text">Text to scrub</label>
+    <textarea id="input-text" rows="7" placeholder="Paste a log line, JSON payload, CSV row, or free text here…&#10;&#10;Example: user john.doe@example.com logged in from 192.168.1.55 using card 4111-1111-1111-1111"></textarea>
+
+    <div class="controls" style="margin-top:14px;">
+      <div class="control-group">
+        <label for="sel-standard">Compliance standard</label>
+        <select id="sel-standard">
+          <option value="gdpr">GDPR — EU personal data</option>
+          <option value="hipaa">HIPAA — US healthcare</option>
+          <option value="pci">PCI-DSS — Payment cards</option>
+          <option value="soc2">SOC 2 — Secrets &amp; credentials</option>
+          <option value="all">All — Every pattern</option>
+          <option value="none">None — Passthrough (no scrubbing)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label for="sel-mask">Mask style</label>
+        <select id="sel-mask">
+          <option value="partial">partial — keep first/last chars</option>
+          <option value="full">full — replace entirely (***)</option>
+          <option value="label">label — [PATTERN_NAME]</option>
+          <option value="redacted">redacted — [REDACTED]</option>
+        </select>
+      </div>
+      <button class="btn-scrub" id="btn-scrub" onclick="runScrub()">
+        Scrub <span class="spinner" id="spinner"></span>
+      </button>
+      <button class="btn-clear" onclick="clearAll()">Clear</button>
+    </div>
+    <div id="error-box"></div>
+  </div>
+
+  <!-- Output card -->
+  <div class="card">
+    <h2>
+      Scrubbed Output
+      <button class="copy-btn" onclick="copyOutput()">Copy</button>
+    </h2>
+    <div id="output-text" class="placeholder">Scrubbed text will appear here…</div>
+  </div>
+
+  <!-- Findings card -->
+  <div class="card" id="findings-card">
+    <h2>Findings <span class="badge-count" id="findings-badge">0</span></h2>
+    <div id="findings-body">
+      <p style="color:#555;font-size:0.85rem;">No findings yet.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  var _scrubUrl = '/custom/TA-logscrub/logscrub_scrubber/scrub_text';
+
+  function runScrub() {
+    var text = document.getElementById('input-text').value.trim();
+    if (!text) return;
+
+    var btn     = document.getElementById('btn-scrub');
+    var spinner = document.getElementById('spinner');
+    var errBox  = document.getElementById('error-box');
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    errBox.style.display  = 'none';
+
+    var params = new URLSearchParams({
+      text:       text,
+      standard:   document.getElementById('sel-standard').value,
+      mask_style: document.getElementById('sel-mask').value,
+    });
+
+    fetch(_scrubUrl, {
+      method:  'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body:    params.toString(),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+
+      if (data.error) {
+        errBox.textContent    = 'Error: ' + data.error;
+        errBox.style.display  = 'block';
+        return;
+      }
+
+      var out = document.getElementById('output-text');
+      out.classList.remove('placeholder');
+      out.textContent = data.scrubbed || '(empty — no text after scrubbing)';
+
+      renderFindings(data.findings || []);
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      spinner.style.display = 'none';
+      errBox.textContent   = 'Request failed: ' + err;
+      errBox.style.display = 'block';
+    });
+  }
+
+  function renderFindings(findings) {
+    var badge = document.getElementById('findings-badge');
+    var body  = document.getElementById('findings-body');
+
+    badge.textContent = findings.length;
+    badge.className   = 'badge-count' + (findings.length === 0 ? ' badge-zero' : '');
+
+    if (findings.length === 0) {
+      body.innerHTML = '<p style="color:#7ee8a2;font-size:0.85rem;">&#x2713; No sensitive data detected.</p>';
+      return;
+    }
+
+    var rows = findings.map(function(f, i) {
+      var catClass = 'cat-' + (f.category || 'pii').toLowerCase();
+      return '<tr>'
+        + '<td>' + (i + 1) + '</td>'
+        + '<td><span class="cat-badge ' + catClass + '">' + escHtml(f.category || '') + '</span></td>'
+        + '<td>' + escHtml(f.pattern) + '</td>'
+        + '<td style="color:#f87171;font-family:monospace">' + escHtml(f.original) + '</td>'
+        + '<td style="color:#7ee8a2;font-family:monospace">' + escHtml(f.masked) + '</td>'
+        + '</tr>';
+    }).join('');
+
+    body.innerHTML = '<table>'
+      + '<thead><tr><th>#</th><th>Category</th><th>Pattern</th><th>Original</th><th>Masked As</th></tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table>';
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function copyOutput() {
+    var txt = document.getElementById('output-text').textContent;
+    navigator.clipboard && navigator.clipboard.writeText(txt);
+  }
+
+  function clearAll() {
+    document.getElementById('input-text').value = '';
+    var out = document.getElementById('output-text');
+    out.textContent = 'Scrubbed text will appear here…';
+    out.classList.add('placeholder');
+    document.getElementById('findings-body').innerHTML = '<p style="color:#555;font-size:0.85rem;">No findings yet.</p>';
+    document.getElementById('findings-badge').textContent = '0';
+    document.getElementById('error-box').style.display = 'none';
+  }
+
+  // Ctrl+Enter to scrub
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runScrub();
+  });
+</script>
+</body>
+</html>
