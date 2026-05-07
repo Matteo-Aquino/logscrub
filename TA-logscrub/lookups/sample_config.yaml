@@ -1,0 +1,43 @@
+# sample_config.yaml — Example configuration file for the | sanitize command
+#
+# Place this file in TA-logscrub/lookups/ and reference it with:
+#   ... | sanitize configuration=sample_config.yaml
+#
+# All keys are optional. Omit any section you don't need.
+
+# Values that should never be masked even if a pattern matches them.
+# Useful for known-safe internal IPs, hostnames, etc.
+allowlist:
+  - "127.0.0.1"
+  - "10.0.0.1"
+  - "healthcheck@internal.local"
+
+# Pattern names to disable in addition to those excluded by the chosen standard.
+disabled_patterns:
+  - ipv4
+  - mac_address
+
+# Override the minimum confidence threshold (0.0 – 1.0).
+# Patterns with confidence below this value are skipped.
+min_confidence: 0.7
+
+# Override the masking style for this configuration.
+# Options: partial | full | label | redacted | token
+mask_style: partial
+
+# Custom regex patterns to apply on top of the built-in library.
+custom_patterns:
+  - name: employee_id
+    category: pii
+    regex: 'EMP-\d{6}'
+    confidence: 1.0
+
+  - name: internal_ticket
+    category: pii
+    regex: 'JIRA-\d{4,6}'
+    confidence: 0.9
+
+  - name: internal_api_token
+    category: credentials
+    regex: 'int_tok_[A-Za-z0-9]{32}'
+    confidence: 1.0

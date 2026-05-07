@@ -1,0 +1,11 @@
+timestamp,level,service,message,user_email,ip_address,details
+2026-05-07T08:12:03Z,INFO,auth,login_success,a***@company.com,192.168.*.*,
+2026-05-07T08:14:02Z,WARN,payment,card_charged,b***@gmail.com,10.0.*.*,card=4111********1111 amount=149.00
+2026-05-07T08:15:30Z,ERROR,user,profile_update_failed,c***@acme.org,10.0.*.*,ssn=***-**-1120 reason=duplicate_key
+2026-05-07T08:16:00Z,INFO,notify,email_sent,d***@example.com,10.0.*.*,
+2026-05-07T08:18:55Z,DEBUG,aws,s3_upload,e***@startup.io,172.16.*.*,access_key=AKIA****...MPLE bucket=user-exports
+2026-05-07T08:21:00Z,INFO,billing,invoice_sent,f***@domain.net,10.0.*.*,iban=GB29**************6819
+2026-05-07T08:23:45Z,DEBUG,config,secret_loaded,g***@webmail.com,10.0.*.*,api_key=s3cr****************7890
+2026-05-07T08:24:10Z,WARN,auth,unusual_login,h***@corp.com,198.51.*.*,phone=***-***-5309
+2026-05-07T08:26:18Z,INFO,passport,identity_verified,i***@company.com,10.0.*.*,passport=A********
+2026-05-07T08:28:59Z,ERROR,openai,quota_exceeded,j***@startup.io,10.0.*.*,key=sk-****...9012

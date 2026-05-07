@@ -1,0 +1,30 @@
+{
+  "session": "a3f9d21b",
+  "timestamp": "2026-05-07T08:30:00Z",
+  "user": {
+    "id": 4821,
+    "email": "a***@company.com",
+    "phone": "***-***-5309",
+    "ssn": "***-**-1120",
+    "passport": "A********",
+    "iban": "GB29**************6819"
+  },
+  "payment": {
+    "card": "4111********1111",
+    "stripe_key": "sk_****...aaaa"
+  },
+  "infrastructure": {
+    "db_url": "postgres://dbadmin:****@db.internal:5432/appdb",
+    "aws_key": "AKIA****...MPLE",
+    "sendgrid_key": "SG.A****...BBBB",
+    "github_token": "ghp_****...aaaa",
+    "slack_token": "xoxb-****...uvwx",
+    "openai_key": "sk-****...9012",
+    "internal_ip": "192.168.*.*",
+    "mac": "00:1A:**:**:**:**"
+  },
+  "jwt": "eyJhbGciOi*****.kenvalue",
+  "api_config": {
+    "api_key": "s3cr3tP4ssw0rd1234567890"
+  }
+}

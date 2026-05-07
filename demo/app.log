@@ -1,0 +1,20 @@
+2026-05-07 08:12:03 INFO  [auth] User login successful: a***@company.com from 192.168.*.*
+2026-05-07 08:12:11 INFO  [db] Connection established: postgres://dbadmin:****@db.internal:5432/appdb
+2026-05-07 08:13:44 DEBUG [api] Outbound request headers: Authorization: Bearer eyJh****eyJh****eyJh*************************************************************************alue
+2026-05-07 08:14:02 WARN  [payment] Stripe charge initiated for card ending 4111********1111 — amount $149.00
+2026-05-07 08:14:05 INFO  [payment] Stripe secret key loaded from env: sk_****...aaaa
+2026-05-07 08:15:30 ERROR [user] Failed to update profile for SSN ***-**-1120 — duplicate key violation
+2026-05-07 08:16:00 INFO  [notify] Sending confirmation to b***@gmail.com
+2026-05-07 08:16:01 DEBUG [notify] SendGrid API key: SG.A****...BBBB
+2026-05-07 08:17:12 INFO  [session] Token issued for user_id=4821, ip=10.0.*.*
+2026-05-07 08:18:55 DEBUG [aws] Using access key AKIA****...MPLE for S3 upload
+2026-05-07 08:19:03 INFO  [audit] Export requested by c***@acme.org — MAC 00:1A:**:**:**:**
+2026-05-07 08:20:14 ERROR [auth] Brute force detected from 203.0.*.* — account d***@example.com locked
+2026-05-07 08:21:00 INFO  [billing] Invoice mailed to e***@startup.io, IBAN: GB29**************6819
+2026-05-07 08:22:33 DEBUG [config] Loaded api_key="s3cr****************7890" from /etc/app/config.yaml
+2026-05-07 08:23:45 INFO  [auth] Password reset requested for f***@domain.net (phone: ***-***-5309)
+2026-05-07 08:24:10 WARN  [geo] Unusual login: g***@webmail.com from 198.51.*.* (expected 192.168.*.*/24)
+2026-05-07 08:25:01 DEBUG [github] Webhook validated using token ghp_****...aaaa
+2026-05-07 08:26:18 INFO  [passport] Identity verified: passport A******** for Henry Russo
+2026-05-07 08:27:44 ERROR [openai] API call failed, key=sk-****...9012 — quota exceeded
+2026-05-07 08:28:59 INFO  [slack] Notification sent via token xoxb-****...uvwx

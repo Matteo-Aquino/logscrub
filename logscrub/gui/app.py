@@ -1788,6 +1788,6 @@ def main() -> None:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setStyle("Fusion")
     app.setStyleSheet(_DARK_QSS)
-    window = DataScrubApp()
+    window = LogScrubApp()
     window.show()
     sys.exit(app.exec())
