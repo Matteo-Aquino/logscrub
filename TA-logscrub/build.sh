@@ -70,6 +70,14 @@ ucc-gen build \
 # ucc-gen may exit 0 on error — check the output dir was actually created
 [[ -d output/TA-logscrub ]] || { echo "ERROR: ucc-gen failed to produce output/TA-logscrub"; exit 1; }
 
+# Patch UCC-generated restmap.conf: add python.required (AppInspect future_failure)
+RESTMAP="output/TA-logscrub/default/restmap.conf"
+if [[ -f "$RESTMAP" ]] && ! grep -q "python.required" "$RESTMAP"; then
+    chmod u+w "$RESTMAP"
+    sed -i '/\[admin_external:ta_logscrub_settings\]/a python.required = 3.13' "$RESTMAP"
+    echo "  Patched restmap.conf with python.required = 3.13"
+fi
+
 # ── 5. Package as .tar.gz for Splunkbase ──────────────────────────────────────
 TARBALL="output/TA-logscrub-${VERSION}.tar.gz"
 echo "[5/6] Creating Splunkbase package → ${TARBALL} ..."
