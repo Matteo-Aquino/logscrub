@@ -1,0 +1,156 @@
+<dashboard version="1.1" theme="dark">
+  <label>LogScrub — Overview</label>
+  <description>Explore PII and secret detection across your data using the | sanitize command.</description>
+
+  <fieldset submitButton="true" autoRun="false">
+    <input type="time" token="time_range" searchWhenChanged="false">
+      <label>Time Range</label>
+      <default>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+    <input type="text" token="tok_index" searchWhenChanged="false">
+      <label>Index</label>
+      <default>*</default>
+      <prefix>index=</prefix>
+    </input>
+    <input type="dropdown" token="tok_standard" searchWhenChanged="false">
+      <label>Compliance Standard</label>
+      <choice value="gdpr">GDPR — EU personal data</choice>
+      <choice value="hipaa">HIPAA — US healthcare</choice>
+      <choice value="pci">PCI-DSS — Payment cards</choice>
+      <choice value="soc2">SOC 2 — Secrets &amp; credentials</choice>
+      <choice value="all">All — Every pattern</choice>
+      <default>gdpr</default>
+    </input>
+    <input type="dropdown" token="tok_mask_style" searchWhenChanged="false">
+      <label>Mask Style</label>
+      <choice value="partial">partial</choice>
+      <choice value="full">full</choice>
+      <choice value="label">label</choice>
+      <choice value="redacted">redacted</choice>
+      <default>partial</default>
+    </input>
+  </fieldset>
+
+  <!-- ── Row 1: KPIs ───────────────────────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Events Sampled</title>
+      <single>
+        <search>
+          <query>$tok_index$ | head 500 | stats count</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="useColors">false</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Events with Findings</title>
+      <single>
+        <search>
+          <query>$tok_index$ | head 500 | sanitize standard=$tok_standard$ mask_style=$tok_mask_style$ report_findings=true | where isnotnull(_raw_findings) | stats count</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="colorBy">value</option>
+        <option name="useColors">true</option>
+        <option name="rangeColors">["0x53a051","0xf1813f","0xdc4e41"]</option>
+        <option name="ranges">[0,1,50]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Total Findings</title>
+      <single>
+        <search>
+          <query>$tok_index$ | head 500 | sanitize standard=$tok_standard$ mask_style=$tok_mask_style$ report_findings=true | where isnotnull(_raw_finding_count) | stats sum(_raw_finding_count) as total</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="useColors">true</option>
+        <option name="rangeColors">["0x53a051","0xf1813f","0xdc4e41"]</option>
+        <option name="ranges">[0,1,100]</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ── Row 2: Charts ─────────────────────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Findings by Pattern</title>
+      <chart>
+        <search>
+          <query>$tok_index$ | head 500 | sanitize standard=$tok_standard$ report_findings=true | where isnotnull(_raw_findings) | makemv delim="," _raw_findings | mvexpand _raw_findings | rename _raw_findings as pattern | stats count by pattern | sort -count</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Top Hosts with Findings</title>
+      <chart>
+        <search>
+          <query>$tok_index$ | head 500 | sanitize standard=$tok_standard$ report_findings=true | where isnotnull(_raw_findings) | stats count by host | sort -count | head 10</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.axisTitleX.text">Host</option>
+        <option name="charting.axisTitleY.text">Finding Count</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- ── Row 3: Scrubbed events table ─────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Sample Scrubbed Events</title>
+      <table>
+        <search>
+          <query>$tok_index$ | head 50 | sanitize standard=$tok_standard$ mask_style=$tok_mask_style$ report_findings=true | where isnotnull(_raw_findings) | table _time, host, sourcetype, _raw, _raw_findings, _raw_finding_count | rename _raw as "Scrubbed _raw", _raw_findings as "Patterns Found", _raw_finding_count as "Count"</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="wrap">true</option>
+        <option name="rowNumbers">true</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ── Row 4: Pattern reference ──────────────────────────────────────────── -->
+  <row>
+    <panel>
+      <title>Pattern Reference — Active Standard: $tok_standard$</title>
+      <table>
+        <search>
+          <query>| makeresults
+| eval standard="$tok_standard$"
+| eval data=case(
+    standard="gdpr",   "email,pii|phone,pii|ssn,pii|us_passport,pii|ipv4,network|mac_address,network|credit_card,financial|iban,financial|url_credentials,network|generic_credential,credentials",
+    standard="hipaa",  "email,pii|phone,pii|ssn,pii|us_passport,pii|credit_card,financial|ipv4,network|url_credentials,network|generic_credential,credentials",
+    standard="pci",    "credit_card,financial|iban,financial|url_credentials,network|generic_credential,credentials",
+    standard="soc2",   "jwt,credentials|bearer_token,credentials|openai_key,credentials|github_token,credentials|aws_access_key,credentials|slack_token,credentials|stripe_key,credentials|google_api_key,credentials|anthropic_key,credentials|sendgrid_key,credentials|url_credentials,network|generic_credential,credentials",
+    standard="all",    "email,pii|phone,pii|ssn,pii|us_passport,pii|jwt,credentials|bearer_token,credentials|openai_key,credentials|github_token,credentials|aws_access_key,credentials|generic_credential,credentials|slack_token,credentials|stripe_key,credentials|google_api_key,credentials|anthropic_key,credentials|sendgrid_key,credentials|credit_card,financial|iban,financial|url_credentials,network|ipv4,network|mac_address,network",
+    1=1, "")
+| makemv delim="|" data
+| mvexpand data
+| eval pattern=mvindex(split(data,","),0), category=mvindex(split(data,","),1)
+| table pattern, category
+| sort category, pattern</query>
+          <earliest>$time_range.earliest$</earliest>
+          <latest>$time_range.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rowNumbers">true</option>
+      </table>
+    </panel>
+  </row>
+
+</dashboard>

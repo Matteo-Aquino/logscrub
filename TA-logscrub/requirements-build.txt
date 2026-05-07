@@ -1,0 +1,10 @@
+# Build-time dependencies for TA-logscrub
+# Install with: pip install -r requirements-build.txt
+#
+# splunk-sdk and pyyaml are also bundled into package/lib/ at build time
+# by build.sh step 2 — these entries ensure the correct versions are used.
+
+splunk-add-on-ucc-framework>=5.0
+splunk-appinspect>=3.0
+splunk-sdk>=2.0
+pyyaml>=6.0

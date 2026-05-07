@@ -1,122 +1,139 @@
 {
-  "meta": {
-    "name": "TA-logscrub",
-    "restRoot": "ta_logscrub",
-    "version": "1.0.0",
-    "displayName": "LogScrub \u2014 PII & Secret Sanitizer",
-    "schemaVersion": "0.0.3"
-  },
-  "pages": {
-    "configuration": {
-      "title": "Configuration",
-      "description": "Set global defaults for the | sanitize search command. Command parameters always override these settings.",
-      "tabs": [
-        {
-          "name": "settings",
-          "title": "Settings",
-          "entity": [
-            {
-              "field": "default_standard",
-              "label": "Default Compliance Standard",
-              "type": "singleSelect",
-              "required": true,
-              "defaultValue": "gdpr",
-              "help": "The compliance standard applied when standard= is not specified in the command.",
-              "options": {
-                "disableSearch": true,
-                "autoCompleteFields": [
-                  {"label": "GDPR \u2014 EU personal data", "value": "gdpr"},
-                  {"label": "HIPAA \u2014 US healthcare identifiers", "value": "hipaa"},
-                  {"label": "PCI-DSS \u2014 Payment card data", "value": "pci"},
-                  {"label": "SOC 2 \u2014 Secrets & credentials", "value": "soc2"},
-                  {"label": "All \u2014 Every available pattern", "value": "all"},
-                  {"label": "None \u2014 Custom patterns only", "value": "none"}
-                ]
-              }
-            },
-            {
-              "field": "default_mask_style",
-              "label": "Default Mask Style",
-              "type": "singleSelect",
-              "required": true,
-              "defaultValue": "partial",
-              "help": "How matched values are replaced in output.",
-              "options": {
-                "disableSearch": true,
-                "autoCompleteFields": [
-                  {"label": "partial \u2014 keep first/last chars (e.g. a***@e***.com)", "value": "partial"},
-                  {"label": "full \u2014 replace entirely with mask char", "value": "full"},
-                  {"label": "label \u2014 replace with [PATTERN_NAME]", "value": "label"},
-                  {"label": "redacted \u2014 replace with [REDACTED]", "value": "redacted"},
-                  {"label": "token \u2014 replace with consistent [TOKEN-N]", "value": "token"}
-                ]
-              }
-            },
-            {
-              "field": "default_min_confidence",
-              "label": "Minimum Confidence (%)",
-              "type": "text",
-              "required": false,
-              "defaultValue": "0",
-              "help": "Only mask patterns with confidence \u2265 this value (0\u2013100). Lower values catch more but may false-positive.",
-              "validators": [
+    "meta": {
+        "name": "TA-logscrub",
+        "restRoot": "ta_logscrub",
+        "version": "1.0.0",
+        "displayName": "LogScrub — PII & Secret Sanitizer",
+        "schemaVersion": "0.0.10"
+    },
+    "pages": {
+        "configuration": {
+            "title": "Configuration",
+            "description": "Set global defaults for the | sanitize search command. Command parameters always override these settings.",
+            "tabs": [
                 {
-                  "type": "number",
-                  "range": [0, 100],
-                  "errorMsg": "Must be a number between 0 and 100."
-                }
-              ]
-            },
-            {
-              "field": "default_report_findings",
-              "label": "Report Findings",
-              "type": "checkbox",
-              "required": false,
-              "defaultValue": "true",
-              "help": "Add <field>_findings and <field>_finding_count fields to each event."
-            },
-            {
-              "field": "default_allowlist",
-              "label": "Global Allowlist",
-              "type": "text",
-              "required": false,
-              "defaultValue": "",
-              "help": "Comma-separated values that should never be masked, even if a pattern matches (e.g. 127.0.0.1,healthcheck@internal.local).",
-              "validators": [
+                    "name": "settings",
+                    "title": "Settings",
+                    "entity": [
+                        {
+                            "field": "default_standard",
+                            "label": "Default Compliance Standard",
+                            "type": "singleSelect",
+                            "required": true,
+                            "defaultValue": "gdpr",
+                            "help": "The compliance standard applied when standard= is not specified in the command.",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "GDPR — EU personal data",
+                                        "value": "gdpr"
+                                    },
+                                    {
+                                        "label": "HIPAA — US healthcare identifiers",
+                                        "value": "hipaa"
+                                    },
+                                    {
+                                        "label": "PCI-DSS — Payment card data",
+                                        "value": "pci"
+                                    },
+                                    {
+                                        "label": "SOC 2 — Secrets & credentials",
+                                        "value": "soc2"
+                                    },
+                                    {
+                                        "label": "All — Every available pattern",
+                                        "value": "all"
+                                    },
+                                    {
+                                        "label": "None — Custom patterns only",
+                                        "value": "none"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "default_mask_style",
+                            "label": "Default Mask Style",
+                            "type": "singleSelect",
+                            "required": true,
+                            "defaultValue": "partial",
+                            "help": "How matched values are replaced in output.",
+                            "options": {
+                                "disableSearch": true,
+                                "autoCompleteFields": [
+                                    {
+                                        "label": "partial — keep first/last chars (e.g. a***@e***.com)",
+                                        "value": "partial"
+                                    },
+                                    {
+                                        "label": "full — replace entirely with mask char",
+                                        "value": "full"
+                                    },
+                                    {
+                                        "label": "label — replace with [PATTERN_NAME]",
+                                        "value": "label"
+                                    },
+                                    {
+                                        "label": "redacted — replace with [REDACTED]",
+                                        "value": "redacted"
+                                    },
+                                    {
+                                        "label": "token — replace with consistent [TOKEN-N]",
+                                        "value": "token"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "field": "default_min_confidence",
+                            "label": "Minimum Confidence (%)",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "0",
+                            "help": "Only mask patterns with confidence ≥ this value (0–100). Lower values catch more but may false-positive.",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [
+                                        0,
+                                        100
+                                    ],
+                                    "errorMsg": "Must be a number between 0 and 100."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "default_report_findings",
+                            "label": "Report Findings",
+                            "type": "checkbox",
+                            "required": false,
+                            "defaultValue": 1,
+                            "help": "Add <field>_findings and <field>_finding_count fields to each event."
+                        },
+                        {
+                            "field": "default_allowlist",
+                            "label": "Global Allowlist",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "",
+                            "help": "Comma-separated values that should never be masked, even if a pattern matches (e.g. 127.0.0.1,healthcheck@internal.local).",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Maximum 4096 characters."
+                                }
+                            ]
+                        }
+                    ]
+                },
                 {
-                  "type": "string",
-                  "minLength": 0,
-                  "maxLength": 4096,
-                  "errorMsg": "Maximum 4096 characters."
+                    "type": "loggingTab",
+                    "label": "Log Level"
                 }
-              ]
-            }
-          ]
-        },
-        {
-          "name": "logging",
-          "title": "Logging",
-          "entity": [
-            {
-              "field": "loglevel",
-              "label": "Log Level",
-              "type": "singleSelect",
-              "required": true,
-              "defaultValue": "INFO",
-              "options": {
-                "disableSearch": true,
-                "autoCompleteFields": [
-                  {"label": "DEBUG", "value": "DEBUG"},
-                  {"label": "INFO",  "value": "INFO"},
-                  {"label": "WARNING", "value": "WARNING"},
-                  {"label": "ERROR", "value": "ERROR"},
-                  {"label": "CRITICAL", "value": "CRITICAL"}
-                ]
-              }
-            }
-          ]
+            ]
         }
-      ]
     }
-  }
 }

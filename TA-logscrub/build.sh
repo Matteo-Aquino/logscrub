@@ -10,7 +10,7 @@
 #   2. Bundle runtime dependencies (splunklib, yaml) into package/lib/
 #   3. Strip .pyc / __pycache__ from lib/
 #   4. Run ucc-gen build  →  output/TA-logscrub/
-#   5. Create Splunkbase .tar.gz  →  output/TA-logscrub-<version>.tar.gz
+#   5. Create Splunkbase .tar.gz  →  output/TA-logscrub-<version>.tar.gz (with 644/755 modes)
 #   6. Run splunk-appinspect (if installed)
 #
 # Usage:
@@ -32,7 +32,7 @@ echo "Building TA-logscrub v${VERSION} ..."
 echo ""
 
 # ── 1. Sync logscrub engine ───────────────────────────────────────────────────
-echo "[1/6] Syncing logscrub engine → package/lib/logscrub/ ..."
+echo "[1/7] Syncing logscrub engine → package/lib/logscrub/ ..."
 SRC="../logscrub"
 DST="package/lib/logscrub"
 mkdir -p "$DST"
@@ -43,13 +43,13 @@ done
 # ── 2. Bundle runtime dependencies ───────────────────────────────────────────
 # splunklib (splunk-sdk) and pyyaml must be shipped inside lib/ so the add-on
 # works without requiring the admin to install packages on the search head.
-echo "[2/6] Installing runtime dependencies into package/lib/ ..."
+echo "[2/7] Installing runtime dependencies into package/lib/ ..."
 pip install --quiet --target package/lib \
     splunk-sdk \
     pyyaml
 
 # ── 3. Strip .pyc / __pycache__ (AppInspect flags compiled bytecode) ─────────
-echo "[3/6] Cleaning .pyc and __pycache__ from package/lib/ ..."
+echo "[3/7] Cleaning .pyc and __pycache__ from package/lib/ ..."
 find package/lib -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 find package/lib -name "*.pyc" -delete 2>/dev/null || true
 # Also remove test directories shipped with dependencies (AppInspect flags them)
@@ -57,17 +57,25 @@ find package/lib -type d -name "tests"  -exec rm -rf {} + 2>/dev/null || true
 find package/lib -type d -name "test"   -exec rm -rf {} + 2>/dev/null || true
 
 # ── 4. Run ucc-gen build ──────────────────────────────────────────────────────
-echo "[4/6] Running ucc-gen build ..."
+echo "[4/7] Running ucc-gen build ..."
+# Ensure output dir is writable before ucc-gen tries to clean/recreate it
+if [[ -d output/TA-logscrub ]]; then
+    chmod -R u+rwX output/TA-logscrub
+    rm -rf output/TA-logscrub
+fi
 ucc-gen build \
     --source package \
     --config globalConfig.json \
     --ta-version "${VERSION}"
+# ucc-gen may exit 0 on error — check the output dir was actually created
+[[ -d output/TA-logscrub ]] || { echo "ERROR: ucc-gen failed to produce output/TA-logscrub"; exit 1; }
 
 # ── 5. Package as .tar.gz for Splunkbase ──────────────────────────────────────
 TARBALL="output/TA-logscrub-${VERSION}.tar.gz"
 echo "[5/6] Creating Splunkbase package → ${TARBALL} ..."
-# AppInspect requires the archive to contain a single top-level folder: TA-logscrub/
-tar -czf "${TARBALL}" -C output TA-logscrub
+# --mode sets permissions inside the archive: files=644, dirs=755 (AppInspect requirement)
+chmod u+rwx output/TA-logscrub
+tar -czf "${TARBALL}" -C output --mode='u=rw,go=r,a+X' TA-logscrub
 
 echo ""
 echo "Build complete."

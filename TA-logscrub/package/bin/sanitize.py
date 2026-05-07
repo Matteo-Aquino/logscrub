@@ -133,6 +133,29 @@ def _read_logscrub_conf(app_root: str) -> dict[str, dict[str, str]]:
     return _read_conf_merged(app_root, "logscrub.conf")
 
 
+def _read_lookup_allowlist(app_root: str) -> frozenset[str]:
+    """
+    Read logscrub_allowlist.csv from <app_root>/lookups/ and return all values
+    in the first column as a frozenset.  Missing file is silently ignored.
+    """
+    import csv
+    path = os.path.join(app_root, "lookups", "logscrub_allowlist.csv")
+    if not os.path.exists(path):
+        return frozenset()
+    values: set[str] = set()
+    try:
+        with open(path, encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            for row in reader:
+                # Support both "value" header and bare first column
+                val = row.get("value") or next(iter(row.values()), None)
+                if val and val.strip():
+                    values.add(val.strip())
+    except OSError:
+        pass
+    return frozenset(values)
+
+
 # ── Standard → allowed pattern names ─────────────────────────────────────────
 
 def _resolve_allowed(
@@ -273,7 +296,7 @@ class SanitizeCommand(StreamingCommand):
         effective_report         = (
             self.report_findings
             if self.report_findings is not None
-            else (ucc.get("default_report_findings", "true").lower() != "false")
+            else (ucc.get("default_report_findings", "1").strip() not in ("0", "false", ""))
         )
         effective_min_conf: float = (
             int(self.min_confidence) / 100.0
@@ -291,6 +314,9 @@ class SanitizeCommand(StreamingCommand):
         ucc_allowlist: frozenset[str] = frozenset(
             v.strip() for v in ucc_allowlist_raw.split(",") if v.strip()
         ) if ucc_allowlist_raw else frozenset()
+
+        # Lookup-driven allowlist from logscrub_allowlist.csv (managed via Splunk UI)
+        lookup_allowlist: frozenset[str] = _read_lookup_allowlist(_APP_ROOT)
 
         # ── 3. Resolve which patterns are active for the chosen standard ───────
         logscrub_conf = _read_logscrub_conf(_APP_ROOT)
@@ -327,7 +353,7 @@ class SanitizeCommand(StreamingCommand):
                     logger.warning("Skipping custom pattern %r: %s", cp.get("name"), exc)
 
         final_disabled = disabled | extra_disabled
-        final_allowlist = ucc_allowlist | yaml_allowlist
+        final_allowlist = ucc_allowlist | lookup_allowlist | yaml_allowlist
 
         logger.debug(
             "sanitize: standard=%s mask=%s min_conf=%.2f fields=%s",

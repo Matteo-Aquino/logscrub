@@ -1,0 +1,4 @@
+value,description,added_by,added_date
+127.0.0.1,Loopback address,admin,2026-05-07
+10.0.0.1,Default gateway,admin,2026-05-07
+healthcheck@internal.local,Internal health check address,admin,2026-05-07

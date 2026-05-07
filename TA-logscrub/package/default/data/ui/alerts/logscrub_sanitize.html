@@ -1,0 +1,50 @@
+<form>
+  <label>LogScrub: Sanitize &amp; Collect</label>
+
+  <fieldset>
+    <input type="text" token="param.fields">
+      <label>Fields to Scrub</label>
+      <suffix></suffix>
+      <default>_raw</default>
+      <prefix></prefix>
+      <initialValue>_raw</initialValue>
+    </input>
+
+    <input type="dropdown" token="param.standard">
+      <label>Compliance Standard</label>
+      <default>gdpr</default>
+      <initialValue>gdpr</initialValue>
+      <choice value="gdpr">GDPR — EU personal data</choice>
+      <choice value="hipaa">HIPAA — US healthcare</choice>
+      <choice value="pci">PCI-DSS — Payment cards</choice>
+      <choice value="soc2">SOC 2 — Secrets &amp; credentials</choice>
+      <choice value="all">All — Every pattern</choice>
+    </input>
+
+    <input type="dropdown" token="param.mask_style">
+      <label>Mask Style</label>
+      <default>partial</default>
+      <initialValue>partial</initialValue>
+      <choice value="partial">partial — keep first/last chars</choice>
+      <choice value="full">full — replace entirely</choice>
+      <choice value="label">label — [PATTERN_NAME]</choice>
+      <choice value="redacted">redacted — [REDACTED]</choice>
+    </input>
+
+    <input type="text" token="param.summary_index">
+      <label>Summary Index</label>
+      <suffix></suffix>
+      <default>logscrub_findings</default>
+      <prefix></prefix>
+      <initialValue>logscrub_findings</initialValue>
+    </input>
+
+    <input type="checkbox" token="param.report_findings">
+      <label>Add findings metadata fields</label>
+      <default>1</default>
+      <initialValue>1</initialValue>
+      <choice value="1">Yes</choice>
+      <choice value="0">No</choice>
+    </input>
+  </fieldset>
+</form>
