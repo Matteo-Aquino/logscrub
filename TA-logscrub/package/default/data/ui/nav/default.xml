@@ -1,5 +1,5 @@
 <nav color="#2C3E50">
-  <a href="/custom/TA-logscrub/logscrub_scrubber">Scrubber</a>
+  <a href="/custom/TA-logscrub/logscrub_scrubber/index">Scrubber</a>
   <view name="logscrub_overview" label="Overview" />
   <view name="search" label="Search" />
 </nav>

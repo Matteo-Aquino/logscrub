@@ -139,6 +139,12 @@ import json
 <script>
   var _scrubUrl = '/custom/TA-logscrub/logscrub_scrubber/scrub_text';
 
+  function getCsrfToken() {
+    // Splunk stores the CSRF token in a cookie named splunkweb_csrf_token_<port>
+    var m = document.cookie.match(/splunkweb_csrf_token_\d+=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
   function runScrub() {
     var text = document.getElementById('input-text').value.trim();
     if (!text) return;
@@ -158,8 +164,12 @@ import json
 
     fetch(_scrubUrl, {
       method:  'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body:    params.toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Splunk-Form-Key': getCsrfToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: params.toString(),
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
